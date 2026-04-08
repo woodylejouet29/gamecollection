@@ -1,0 +1,16 @@
+Options -Indexes
+Options -MultiViews
+
+RewriteEngine On
+
+# ── Bloquer les dossiers sensibles (code source, BDD, logs, cache)
+RewriteRule ^(vendor|src|views|database|routes)(/|$) - [F,L]
+RewriteRule ^storage/(cache|logs|rate_limits)(/|$)   - [F,L]
+
+# ── storage/images/ est intentionnellement accessible (jaquettes WebP locales)
+# ── Servir les fichiers et dossiers existants directement (assets, images…)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# ── Tout le reste → front controller
+RewriteRule ^ index.php [QSA,L]

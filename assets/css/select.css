@@ -1,0 +1,710 @@
+/* ================================================================
+   select.css — Page /select : Liste de sélection
+   Mobile-first — thèmes clair et sombre via variables globales
+   ================================================================ */
+
+/* ── Mise en page générale ────────────────────────────────────── */
+.sel-page {
+    min-height: 0vh;
+    padding-bottom: 0rem; /* espace pour la barre sticky */
+}
+
+.sel-container {
+    padding-top: 1.75rem;
+    padding-bottom: 2rem;
+}
+
+/* ── En-tête ──────────────────────────────────────────────────── */
+.sel-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.sel-back {
+    display: inline-flex;
+    align-items: center;
+    gap: .375rem;
+    padding: .5rem .75rem;
+    border-radius: var(--radius);
+    background: var(--bg-2);
+    color: var(--text-2);
+    font-size: .8125rem;
+    font-weight: 500;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: background var(--transition), color var(--transition);
+    margin-top: .125rem;
+    margin-bottom: 0.5rem;
+}
+.sel-back:hover { background: var(--bg-3); color: var(--text); }
+.sel-back svg   { width: 14px; height: 14px; }
+
+.sel-header__text { flex: 1; min-width: 0; }
+
+.sel-header__title {
+    display: flex;
+    align-items: center;
+    gap: .625rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: clamp(1.375rem, 4vw, 1.875rem);
+    font-weight: 800;
+    color: var(--text);
+    line-height: 1.2;
+    margin-bottom: .3rem;
+}
+.sel-header__icon {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    color: var(--accent-2);
+}
+.sel-header__sub {
+    font-size: .875rem;
+    color: var(--text-3);
+}
+
+/* ── Chargement ───────────────────────────────────────────────── */
+.sel-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 4rem 1rem;
+    color: var(--text-3);
+    font-size: .9375rem;
+}
+
+.sel-loading__spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: sel-spin .7s linear infinite;
+}
+@keyframes sel-spin { to { transform: rotate(360deg); } }
+
+/* ── État vide ────────────────────────────────────────────────── */
+.sel-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 3.5rem 1.5rem;
+    gap: .875rem;
+}
+
+.sel-empty__icon {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: var(--bg-2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: .5rem;
+}
+.sel-empty__icon svg { width: 32px; height: 32px; color: var(--text-3); }
+
+.sel-empty__title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text);
+}
+.sel-empty__desc {
+    max-width: 380px;
+    font-size: .9rem;
+    color: var(--text-2);
+    line-height: 1.6;
+}
+
+/* ── Liste des jeux ───────────────────────────────────────────── */
+.sel-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 0;
+}
+
+/* ── Carte jeu ────────────────────────────────────────────────── */
+.sel-game {
+    background: var(--bg-2);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    transition: border-color var(--transition);
+}
+.sel-game:focus-within { border-color: var(--accent); }
+
+/* Erreur de chargement */
+.sel-game--error {
+    border-color: rgba(239,68,68,.3);
+    background: rgba(239,68,68,.06);
+}
+
+/* ── En-tête de la carte ──────────────────────────────────────── */
+.sel-game__header {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem 1rem .875rem;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+}
+
+.sel-game__cover-wrap {
+    flex-shrink: 0;
+    width: 56px;
+    height: 76px;
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--bg-3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.sel-game__cover {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.sel-game__cover-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-3);
+}
+.sel-game__cover-placeholder svg { width: 24px; height: 24px; }
+
+.sel-game__info { flex: 1; min-width: 0; padding-right: 2.5rem; }
+
+.sel-game__title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: .5rem;
+    line-height: 1.3;
+    word-break: break-word;
+}
+
+.sel-game__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .375rem;
+}
+
+.sel-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: .2rem .55rem;
+    border-radius: 20px;
+    font-size: .7rem;
+    font-weight: 600;
+    letter-spacing: .03em;
+    white-space: nowrap;
+}
+.sel-badge--platform { background: rgba(124,58,237,.15); color: var(--accent-3); }
+.sel-badge--region   { background: rgba(168,164,193,.12); color: var(--text-2); }
+.sel-badge--physical { background: rgba(34,197,94,.12); color: #22c55e; }
+.sel-badge--digital  { background: rgba(59,130,246,.12); color: #60a5fa; }
+.sel-badge--version  { background: rgba(245,158,11,.12); color: var(--warning); }
+
+.sel-game__remove {
+    position: absolute;
+    top: .875rem;
+    right: .875rem;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    color: var(--text-3);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background var(--transition), color var(--transition);
+    flex-shrink: 0;
+}
+.sel-game__remove:hover { background: rgba(239,68,68,.12); color: var(--error); }
+.sel-game__remove svg   { width: 16px; height: 16px; }
+
+/* ── Corps formulaire ─────────────────────────────────────────── */
+.sel-game__body {
+    padding: 1rem;
+}
+
+/* Version selector */
+.sel-version {
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px dashed var(--border);
+}
+.sel-version--hidden { display: none; }
+
+/* Type toggle (Physique / Dématérialisé) */
+.sel-type-toggle {
+    display: flex;
+    gap: .375rem;
+    margin-bottom: 1.25rem;
+}
+.sel-type-btn {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .45rem;
+    padding: .625rem .75rem;
+    border-radius: var(--radius);
+    border: 1.5px solid var(--border);
+    background: var(--bg-3);
+    color: var(--text-2);
+    font-size: .8125rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all var(--transition);
+    text-align: center;
+    line-height: 1;
+    min-height: 40px;
+}
+.sel-type-btn:hover { border-color: var(--accent); color: var(--text); }
+.sel-type-btn:focus-visible {
+    outline: 0;
+    box-shadow: 0 0 0 3px rgba(124,58,237,.22);
+}
+.sel-type-btn svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    display: block;
+    opacity: .9;
+}
+.sel-type-btn.is-active {
+    background: var(--grad);
+    border-color: transparent;
+    color: #fff;
+}
+.sel-type-btn.is-active svg { opacity: 1; }
+
+/* ── Sections copies ──────────────────────────────────────────── */
+.sel-copies { display: flex; flex-direction: column; gap: 1rem; }
+
+.sel-copy {
+    background: var(--bg-3);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+
+.sel-copy__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: .625rem .875rem;
+    background: var(--bg-2);
+    border-bottom: 1px solid var(--border);
+    gap: .5rem;
+}
+
+.sel-copy__label {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    font-size: .8125rem;
+    font-weight: 700;
+    color: var(--text-2);
+    letter-spacing: .03em;
+}
+.sel-copy__num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--grad);
+    color: #fff;
+    font-size: .75rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.sel-copy__del {
+    display: flex;
+    align-items: center;
+    gap: .3rem;
+    padding: .3rem .625rem;
+    border: 1px solid rgba(239,68,68,.3);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--error);
+    font-size: .75rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition);
+}
+.sel-copy__del:hover { background: rgba(239,68,68,.1); }
+.sel-copy__del svg   { width: 12px; height: 12px; }
+
+.sel-copy__fields {
+    padding: .875rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0; /* form-groups gèrent leur margin-bottom */
+}
+
+/* ── Groupes de champs spécifiques ────────────────────────────── */
+.sel-playtime-row {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+}
+.sel-playtime-row .form-input {
+    width: 80px;
+    text-align: center;
+    flex-shrink: 0;
+}
+.sel-playtime-row span {
+    font-size: .875rem;
+    color: var(--text-2);
+    flex-shrink: 0;
+}
+
+/* Rating 1-10 — pills cliquables */
+.sel-rating-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .375rem;
+}
+.sel-rating-pill {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    border: 1.5px solid var(--border);
+    background: var(--bg-2);
+    color: var(--text-2);
+    font-size: .875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition);
+    user-select: none;
+}
+.sel-rating-pill:hover { border-color: var(--accent-2); color: var(--accent-2); }
+.sel-rating-pill.is-selected {
+    background: var(--grad);
+    border-color: transparent;
+    color: #fff;
+}
+.sel-rating-val {
+    font-size: .875rem;
+    color: var(--text-2);
+    font-weight: 500;
+    margin-left: .25rem;
+    align-self: center;
+}
+
+/* Compteur de caractères review */
+.sel-char-count { font-size: .775rem; color: var(--text-3); margin-top: .3rem; }
+.sel-char-count.is-ok { color: var(--success); }
+.sel-char-count.is-warn { color: var(--warning); }
+
+/* ── Champs physiques (cachés si dématérialisé) ───────────────── */
+.sel-physical-fields { display: contents; }
+.sel-physical-fields.is-hidden > * { display: none !important; }
+
+/* Radio boutons (Oui/Non, Présent/Absent) */
+.sel-radio-group {
+    display: flex;
+    gap: .5rem;
+}
+.sel-radio-label {
+    flex: 1;
+    position: relative;
+    cursor: pointer;
+}
+.sel-radio-label input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.sel-radio-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: .5rem .75rem;
+    border-radius: var(--radius);
+    border: 1.5px solid var(--border);
+    background: var(--bg-2);
+    color: var(--text-2);
+    font-size: .8125rem;
+    font-weight: 600;
+    transition: all var(--transition);
+    text-align: center;
+    gap: .3rem;
+}
+.sel-radio-label input:checked + .sel-radio-btn {
+    background: var(--grad);
+    border-color: transparent;
+    color: #fff;
+}
+.sel-radio-label:hover .sel-radio-btn { border-color: var(--accent); }
+
+/* Photos section */
+.sel-photos-list {
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+}
+.sel-photo-input-row {
+    display: flex;
+    gap: .5rem;
+    align-items: center;
+}
+.sel-photo-input-row .form-input { flex: 1; }
+.sel-photo-add-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .375rem;
+    padding: .4rem .75rem;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--text-3);
+    font-size: .8rem;
+    cursor: pointer;
+    transition: all var(--transition);
+    margin-top: .25rem;
+}
+.sel-photo-add-btn:hover { border-color: var(--accent-2); color: var(--accent-2); }
+.sel-photo-add-btn svg { width: 14px; height: 14px; }
+
+.sel-photo-upload-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .375rem;
+    padding: .4rem .75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-2);
+    color: var(--text-2);
+    font-size: .8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition);
+    margin-top: .25rem;
+    margin-right: .5rem;
+}
+.sel-photo-upload-btn:hover { border-color: var(--accent); color: var(--text); }
+.sel-photo-upload-btn:disabled { opacity: .5; cursor: not-allowed; }
+.sel-photo-upload-btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+/* Bouton "Ajouter un exemplaire" */
+.sel-add-copy {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    width: 100%;
+    margin-top: 1rem;
+    padding: .625rem;
+    border: 1.5px dashed var(--border);
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--text-3);
+    font-size: .875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition);
+}
+.sel-add-copy:hover {
+    border-color: var(--accent-2);
+    color: var(--accent-2);
+    background: rgba(124,58,237,.05);
+}
+.sel-add-copy svg { width: 16px; height: 16px; }
+
+/* ── Avertissement doublon ────────────────────────────────────── */
+.sel-dup-warn {
+    display: flex;
+    align-items: flex-start;
+    gap: .625rem;
+    padding: .75rem .875rem;
+    margin-top: .75rem;
+    background: rgba(239,68,68,.08);
+    border: 1px solid rgba(239,68,68,.25);
+    border-radius: var(--radius);
+    color: var(--error);
+    font-size: .8125rem;
+    line-height: 1.5;
+}
+.sel-dup-warn svg { width: 16px; height: 16px; flex-shrink: 0; margin-top: .1rem; }
+
+/* ── Barre sticky de soumission ───────────────────────────────── */
+.sel-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 150;
+    background: var(--bg-2);
+    border-top: 1.5px solid var(--border);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: .875rem 1rem;
+    transform: translateY(100%);
+    transition: transform .25s cubic-bezier(.4,0,.2,1);
+}
+.sel-bar.is-visible { transform: translateY(0); }
+
+.sel-bar__inner {
+    max-width: var(--layout-max);
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.sel-bar__info {
+    display: flex;
+    flex-direction: column;
+    gap: .15rem;
+    min-width: 0;
+}
+.sel-bar__count {
+    font-size: .9375rem;
+    font-weight: 700;
+    color: var(--text);
+    white-space: nowrap;
+}
+.sel-bar__hint { font-size: .75rem; color: var(--text-3); }
+
+.sel-bar__actions {
+    display: flex;
+    align-items: center;
+    gap: .625rem;
+    flex-shrink: 0;
+}
+
+/* ── Résultat global (succès / erreur) ────────────────────────── */
+.sel-result {
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-top: 1.5rem;
+}
+.sel-result-success,
+.sel-result-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 2.5rem 1.5rem;
+    gap: .875rem;
+}
+.sel-result-success { background: rgba(34,197,94,.08); border: 1.5px solid rgba(34,197,94,.25); }
+.sel-result-error   { background: rgba(239,68,68,.08); border: 1.5px solid rgba(239,68,68,.2); }
+
+.sel-result-success__icon,
+.sel-result-error__icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.sel-result-success__icon { background: rgba(34,197,94,.15); color: var(--success); }
+.sel-result-error__icon   { background: rgba(239,68,68,.12); color: var(--error); }
+.sel-result-success__icon svg,
+.sel-result-error__icon svg { width: 28px; height: 28px; }
+
+.sel-result-success__title { font-size: 1.25rem; font-weight: 700; color: var(--success); }
+.sel-result-error__title   { font-size: 1.25rem; font-weight: 700; color: var(--error); }
+.sel-result-success__desc,
+.sel-result-error__desc    { font-size: .9rem; color: var(--text-2); max-width: 400px; }
+
+/* Erreurs partielles dans les cartes jeux */
+.sel-copy-error {
+    padding: .5rem .75rem;
+    background: rgba(239,68,68,.08);
+    border-left: 3px solid var(--error);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    font-size: .8rem;
+    color: var(--error);
+    margin-top: .5rem;
+}
+
+/* ── État de soumission en cours ──────────────────────────────── */
+.sel-submitting .sel-list { opacity: .6; pointer-events: none; }
+.sel-bar__spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(255,255,255,.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: sel-spin .6s linear infinite;
+}
+
+/* ── Responsive ───────────────────────────────────────────────── */
+@media (max-width: 600px) {
+    .sel-page {
+        /* Laisse la place à la sel-bar + à la bottom-nav (56px) sur mobile */
+        padding-bottom: calc(0rem + 2px + env(safe-area-inset-bottom, 0px));
+    }
+
+    .sel-container { padding-top: 1.25rem; }
+
+    .sel-header {
+        flex-direction: column;
+        gap: .75rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .sel-game__cover-wrap {
+        width: 48px;
+        height: 64px;
+    }
+
+    .sel-type-btn { padding: .5rem .5rem; font-size: .75rem; }
+
+    .sel-rating-pill { width: 32px; height: 32px; font-size: .8rem; }
+
+    .sel-bar__inner {
+        flex-direction: column;
+        align-items: stretch;
+        gap: .625rem;
+    }
+    .sel-bar__actions { justify-content: stretch; }
+    .sel-bar__actions .btn { flex: 1; justify-content: center; }
+
+    .sel-bar__info { text-align: center; align-items: center; }
+
+    /* Évite que la bottom-nav recouvre la sel-bar sur mobile */
+    .sel-bar {
+        bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+        z-index: 210;
+    }
+}
+
+@media (max-width: 400px) {
+    .sel-game__cover-wrap { display: none; }
+    .sel-game__info { padding-right: 2rem; }
+}
+
+/* ── Thème clair (overrides) ──────────────────────────────────── */
+[data-theme="light"] .sel-copy { background: var(--bg-2); }
+[data-theme="light"] .sel-game { background: #fff; }
+[data-theme="light"] .sel-bar  { background: rgba(255,255,255,.92); }
+[data-theme="light"] .sel-type-btn { background: var(--bg-2); }
+[data-theme="light"] .sel-rating-pill { background: var(--bg-2); }
+[data-theme="light"] .sel-radio-btn  { background: var(--bg-2); }

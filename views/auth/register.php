@@ -10,7 +10,7 @@ use App\Core\Flash;
             <p class="auth-card__sub">Rejoignez la communauté des collectionneurs</p>
         </div>
 
-        <form action="/register" method="POST" enctype="multipart/form-data" class="auth-form" novalidate>
+        <form id="register-form" action="/register" method="POST" enctype="multipart/form-data" class="auth-form" novalidate>
             <?= Csrf::field() ?>
 
             <!-- Avatar -->
@@ -118,9 +118,9 @@ use App\Core\Flash;
             $jsonCatalogFlags = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP;
             ?>
             <div class="form-group">
-                <label for="platform-picker-search" class="form-label">Plateformes possédées <span class="optional">(optionnel)</span></label>
+                <label for="platform-picker-search" class="form-label">Plateformes possédées <span class="required">*</span></label>
                 <?php if (empty($platforms)): ?>
-                <p class="form-hint">Les plateformes ne peuvent pas être chargées pour le moment. Vous pourrez compléter votre profil plus tard.</p>
+                <p class="form-hint">Les plateformes ne peuvent pas être chargées pour le moment. L’inscription reste possible ; vous pourrez compléter votre profil plus tard.</p>
                 <?php else: ?>
                 <script type="application/json" id="platform-catalog-json"><?= json_encode($platforms, $jsonCatalogFlags) ?></script>
                 <script type="application/json" id="platform-picker-initial"><?= json_encode($initialPlatformIds, $jsonCatalogFlags) ?></script>
@@ -145,13 +145,18 @@ use App\Core\Flash;
                     <div class="platform-picker__hidden" id="platform-picker-hidden"></div>
                 </div>
                 <p class="form-hint">Tapez quelques lettres puis choisissez dans la liste. Ajoutez autant de plateformes que nécessaire.</p>
+                <p class="form-error" id="platforms-client-error" hidden></p>
+                <?php endif; ?>
+                <?php if ($e = Flash::fieldError('platforms')): ?>
+                <p class="form-error"><?= $e ?></p>
                 <?php endif; ?>
             </div>
 
             <!-- Genres -->
             <div class="form-group">
-                <p class="form-label">Genres préférés <span class="optional">(optionnel)</span></p>
-                <div class="chip-grid chip-grid--genres">
+                <p class="form-label" id="genres-label">Genres préférés <span class="required">*</span></p>
+                <p class="form-error" id="genres-client-error" hidden></p>
+                <div class="chip-grid chip-grid--genres" role="group" aria-labelledby="genres-label">
                     <?php
                     $oldGenres = Flash::oldArray('genres');
                     foreach ($genres as $g):
@@ -163,6 +168,9 @@ use App\Core\Flash;
                     </label>
                     <?php endforeach; ?>
                 </div>
+                <?php if ($e = Flash::fieldError('genres')): ?>
+                <p class="form-error"><?= $e ?></p>
+                <?php endif; ?>
             </div>
 
             <!-- Turnstile -->
@@ -171,10 +179,9 @@ use App\Core\Flash;
             ?>
             <?php if (!empty($turnstileSiteKey)): ?>
             <div class="form-group form-group--center">
-                <div class="cf-turnstile"
+                <div class="turnstile-mount"
                      data-sitekey="<?= htmlspecialchars($turnstileSiteKey) ?>"
-                     data-theme="<?= ($_COOKIE['theme'] ?? 'dark') === 'light' ? 'light' : 'dark' ?>">
-                </div>
+                     data-theme="<?= ($_COOKIE['theme'] ?? 'dark') === 'light' ? 'light' : 'dark' ?>"></div>
             </div>
             <?php endif; ?>
 
@@ -215,6 +222,44 @@ document.querySelectorAll('.avatar-tab').forEach(btn => {
         if (target) target.hidden = false;
     });
 });
+
+// Au moins une plateforme (si catalogue chargé) + au moins un genre
+(function () {
+    const form = document.getElementById('register-form');
+    if (!form) return;
+    const errPlat = document.getElementById('platforms-client-error');
+    const errGenre = document.getElementById('genres-client-error');
+
+    function clearClientErrors() {
+        if (errPlat) { errPlat.hidden = true; errPlat.textContent = ''; }
+        if (errGenre) { errGenre.hidden = true; errGenre.textContent = ''; }
+    }
+
+    document.getElementById('platform-picker-search')?.addEventListener('input', clearClientErrors);
+    form.querySelectorAll('input[name="genres[]"]').forEach((el) => el.addEventListener('change', clearClientErrors));
+
+    form.addEventListener('submit', function (e) {
+        clearClientErrors();
+        const hasCatalog = document.getElementById('platform-catalog-json');
+        if (hasCatalog && errPlat) {
+            const nPlat = document.querySelectorAll('#platform-picker-hidden input[name="platforms[]"]').length;
+            if (nPlat < 1) {
+                e.preventDefault();
+                errPlat.textContent = 'Veuillez sélectionner au moins une plateforme possédée.';
+                errPlat.hidden = false;
+                document.getElementById('platform-picker-search')?.focus();
+                return;
+            }
+        }
+        const nGenre = document.querySelectorAll('input[name="genres[]"]:checked').length;
+        if (nGenre < 1 && errGenre) {
+            e.preventDefault();
+            errGenre.textContent = 'Veuillez sélectionner au moins un genre préféré.';
+            errGenre.hidden = false;
+            document.querySelector('input[name="genres[]"]')?.focus();
+        }
+    });
+})();
 
 // Sélecteur plateformes (recherche + liste)
 (function () {

@@ -61,7 +61,7 @@ $router->get('/api/collection/export',         [App\Controllers\Api\CollectionAp
 // $router->get('/agenda',      [App\Controllers\AgendaController::class, 'index']);
 // $router->get('/user/{slug}', [App\Controllers\UserController::class, 'show']);
 // $router->get('/barcode',     [App\Controllers\BarcodeController::class, 'index']);
-// $router->post('/api/wishlist/toggle',        [App\Controllers\Api\WishlistController::class, 'toggle']);
-// $router->post('/api/reviews/add',            [App\Controllers\Api\ReviewController::class, 'add']);
-// $router->get('/api/user/profile',            [App\Controllers\Api\UserApiController::class, 'profile']);
+$router->post('/api/wishlist/toggle',        [App\Controllers\Api\WishlistController::class, 'toggle']);
+$router->post('/api/reviews/add',            [App\Controllers\Api\ReviewController::class, 'add']);
+$router->get('/api/user/profile',            [App\Controllers\Api\UserApiController::class, 'profile']);
 // $router->post('/api/barcode/lookup',         [App\Controllers\Api\BarcodeController::class, 'lookup']);

@@ -87,6 +87,10 @@ class SearchController
             ? 'Recherche : ' . htmlspecialchars($filters['q'])
             : 'Catalogue des jeux';
 
+        // Filtres « actifs » pour le badge FAB / lien Réinitialiser : uniquement la sidebar
+        // (pas la recherche `q`, pas le tri par défaut `sort`, aligné avec search.js updateFabBadge).
+        $activeFilters = $this->sidebarActiveFilters($filters);
+
         View::render('search/index', [
             'title'         => $pageTitle,
             'cssFile'       => 'search',
@@ -96,7 +100,7 @@ class SearchController
             'filters'       => $filters,
             'filterOptions' => $options,
             'platformMap'   => $platformMap,
-            'activeFilters' => array_filter($filters, static fn($v) => $v !== '' && $v !== 0),
+            'activeFilters' => $activeFilters,
             'baseUrl'       => $baseUrl,
             'nextCursor'    => $result['next_cursor'] ?? null,
             'pageSize'      => $perPage,
@@ -105,6 +109,31 @@ class SearchController
             'foot'          => '<script>window.SEARCH_CONFIG={gameUrl:"/api/games/",suggestUrl:"/api/games/search"};</script>'
                             . '<script src="' . View::asset('js/search.js') . '" defer></script>',
         ]);
+    }
+
+    /**
+     * Filtres sidebar réellement choisis (pour badge « Filtres » et affichage Réinitialiser).
+     */
+    private function sidebarActiveFilters(array $filters): array
+    {
+        $out = [];
+        if ((int) ($filters['platform'] ?? 0) > 0) {
+            $out['platform'] = (int) $filters['platform'];
+        }
+        if (trim((string) ($filters['genre'] ?? '')) !== '') {
+            $out['genre'] = $filters['genre'];
+        }
+        if (trim((string) ($filters['year_from'] ?? '')) !== '') {
+            $out['year_from'] = $filters['year_from'];
+        }
+        if (trim((string) ($filters['year_to'] ?? '')) !== '') {
+            $out['year_to'] = $filters['year_to'];
+        }
+        if ((int) ($filters['rating_min'] ?? 0) > 0) {
+            $out['rating_min'] = (int) $filters['rating_min'];
+        }
+
+        return $out;
     }
 
     private function buildBaseUrl(array $filters): string

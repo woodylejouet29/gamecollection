@@ -29,6 +29,12 @@ $dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
 $dotenv->safeLoad();
 
 // ──────────────────────────────────────────────
+//  Middleware CSP (Content Security Policy)
+// ──────────────────────────────────────────────
+$cspMiddleware = new \App\Core\Middleware\CspMiddleware();
+$cspMiddleware->handle();
+
+// ──────────────────────────────────────────────
 //  Gestion globale des erreurs
 // ──────────────────────────────────────────────
 $debug = ($_ENV['APP_DEBUG'] ?? 'false') === 'true';

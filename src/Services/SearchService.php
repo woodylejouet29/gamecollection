@@ -21,7 +21,7 @@ use Throwable;
  */
 class SearchService
 {
-    private const RESULTS_CACHE_VERSION = 5;
+    private const RESULTS_CACHE_VERSION = 6;
     private const FILTER_PLATFORMS_CACHE_KEY = 'filter_platforms_v2';
 
     private Client $http;
@@ -50,7 +50,7 @@ class SearchService
      * Recherche paginée avec filtres.
      * Résultats mis en cache 5 min par combinaison de paramètres.
      *
-     * @param  array{q?:string, platform?:int, genre?:string, rating_min?:int, sort?:string} $filters
+     * @param  array{q?:string, platform?:int, genre?:string, rating_min?:int, sort?:'all'|'recent'|'upcoming'|'rating'} $filters
      * @return array{games: array, total: int}
      */
     public function search(array $filters, int $page = 1, int $perPage = 24): array
@@ -234,7 +234,7 @@ class SearchService
      */
     private function encodeCursorFromRow(string $sort, array $row): ?string
     {
-        $sort = $sort !== '' ? $sort : 'recent';
+        $sort = $sort !== '' ? $sort : 'all';
 
         $payload = ['s' => $sort, 'id' => (int) ($row['id'] ?? 0)];
         if ($payload['id'] <= 0) {
@@ -242,6 +242,8 @@ class SearchService
         }
 
         switch ($sort) {
+            case 'all':
+                break;
             case 'rating':
                 $payload['r'] = isset($row['igdb_rating']) ? (float) $row['igdb_rating'] : null;
                 if ($payload['r'] === null) return null;
@@ -281,11 +283,12 @@ class SearchService
             return '';
         }
 
-        $sort = $sort !== '' ? $sort : (string) ($data['s'] ?? 'recent');
+        $sort = $sort !== '' ? $sort : (string) ($data['s'] ?? 'all');
 
         // PostgREST n'a pas de comparaison tuple portable (a,b) < (c,d),
         // donc on encode une disjonction OR en `or=(...)`.
         return match ($sort) {
+            'all' => '&id=lt.' . $id,
             'upcoming', 'oldest' => (
                 isset($data['d']) && is_string($data['d']) && $data['d'] !== ''
                     ? '&release_date=not.is.null'
@@ -873,6 +876,7 @@ class SearchService
         // Filtre genres géré plus haut (car conflit possible avec la pagination cursor `or=(...)`).
 
         // Tri "Plus récents" et "Prochaines sorties" : bornes relatives à aujourd'hui
+        // (le mode "all" / défaut n'applique aucune borne : inclut jeux futurs et sans date)
         if ($sort === 'recent') {
             $qs .= '&release_date=lte.' . date('Y-m-d');
         } elseif ($sort === 'upcoming') {
@@ -892,6 +896,8 @@ class SearchService
     private function resolveOrder(string $sort): string
     {
         return match ($sort) {
+            'all', ''    => 'id.desc',
+            'recent'     => 'release_date.desc.nullslast,id.desc',
             'upcoming'   => 'release_date.asc.nullslast,id.asc',
             'rating'     => 'igdb_rating.desc.nullslast,id.desc',
             default      => 'release_date.desc.nullslast,id.desc',

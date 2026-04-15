@@ -1,6 +1,6 @@
 {
-    "name": "gameproject/site-collection",
-    "description": "Site de collection de jeux vidéo",
+    "name": "playshelf/site",
+    "description": "PlayShelf — site de collection de jeux vidéo",
     "type": "project",
     "require": {
         "php": ">=8.1",

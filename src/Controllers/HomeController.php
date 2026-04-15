@@ -42,7 +42,7 @@ class HomeController
             'title'    => 'Accueil',
             'cssFile'  => 'home',
             'metaDesc' => $metaDesc,
-            'ogTitle'  => 'GameCollection — Cataloguez votre passion jeu vidéo',
+            'ogTitle'  => 'PlayShelf — Cataloguez votre passion jeu vidéo',
             'ogDesc'   => $metaDesc,
             'ogUrl'    => $appUrl . '/',
             'head'     => '<script src="' . View::asset('js/home.js') . '" defer></script>',

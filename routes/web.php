@@ -12,6 +12,12 @@ use App\Core\Router;
 $router->get('/', [App\Controllers\HomeController::class, 'index']);
 
 // ──────────────────────────────────────────────
+//  Sitemap & robots.txt (P5.2 — SEO)
+// ──────────────────────────────────────────────
+$router->get('/sitemap.xml', [App\Controllers\SitemapController::class, 'index']);
+$router->get('/robots.txt', [App\Controllers\SitemapController::class, 'robots']);
+
+// ──────────────────────────────────────────────
 //  Authentification (P1 — Bloc 1.2)
 // ──────────────────────────────────────────────
 $router->get('/register',  [App\Controllers\Auth\RegisterController::class, 'show']);

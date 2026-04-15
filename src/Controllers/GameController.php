@@ -44,7 +44,7 @@ class GameController
         $synopsis = trim((string) ($game['synopsis'] ?? $game['storyline'] ?? ''));
         $metaDesc = $synopsis !== ''
             ? mb_substr(strip_tags($synopsis), 0, 160) . '…'
-            : "Découvrez {$gameTitle} sur GameCollection — notes, plateformes, galerie et avis des membres.";
+            : "Découvrez {$gameTitle} sur PlayShelf — notes, plateformes, galerie et avis des membres.";
 
         $coverUrl = $this->absoluteUrl($game['cover_url'] ?? '', $appUrl);
         $ogImage  = $coverUrl ?: ($appUrl . '/assets/img/og-default.jpg');
@@ -58,7 +58,7 @@ class GameController
             'title'    => $gameTitle . ($year ? " ({$year})" : ''),
             'cssFile'  => 'game',
             'metaDesc' => $metaDesc,
-            'ogTitle'  => $gameTitle . ' — GameCollection',
+            'ogTitle'  => $gameTitle . ' — PlayShelf',
             'ogDesc'   => $metaDesc,
             'ogUrl'    => $appUrl . '/game/' . $slug,
             'ogImage'  => $ogImage,

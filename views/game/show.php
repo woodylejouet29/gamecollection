@@ -260,7 +260,7 @@ function platformLabel(array $p): string
                             </div>
                         <?php endif; ?>
                         <?php if ($avgReview !== null): ?>
-                            <div class="rating-badge" title="Note des membres GameCollection">
+                            <div class="rating-badge" title="Note des membres PlayShelf">
                                 <span class="rating-badge__val" style="color:<?= scoreColor($avgReview * 10) ?>">
                                     <?= number_format($avgReview, 1) ?>
                                 </span>
@@ -962,7 +962,8 @@ function platformLabel(array $p): string
             <div class="modal__game-preview">
                 <?php if ($coverUrl): ?>
                     <img src="<?= htmlspecialchars(gameCoverBig($coverUrl)) ?>"
-                         alt="" class="modal__game-cover">
+                         alt="" class="modal__game-cover"
+                         loading="lazy">
                 <?php endif; ?>
                 <div>
                     <p class="modal__game-title"><?= htmlspecialchars($title) ?></p>

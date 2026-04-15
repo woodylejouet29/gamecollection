@@ -79,6 +79,9 @@ $q = htmlspecialchars($filters['q'] ?? '');
                 <?php endforeach; ?>
             <?php endif; ?>
             <?php foreach (['rating_min', 'sort'] as $k): ?>
+                <?php if ($k === 'sort' && (($filters['sort'] ?? '') === 'all')): ?>
+                    <?php continue; ?>
+                <?php endif; ?>
                 <?php if (!empty($filters[$k])): ?>
                     <input type="hidden" name="<?= $k ?>" value="<?= htmlspecialchars((string)$filters[$k]) ?>">
                 <?php endif; ?>

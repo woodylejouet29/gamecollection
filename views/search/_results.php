@@ -49,7 +49,7 @@ if (!function_exists('searchFmtDateShort')) {
 }
 
 $viewMode    = $_COOKIE['view_mode'] ?? 'grid';
-$currentSort = $filters['sort'] ?? 'recent';
+$currentSort = $filters['sort'] ?? 'all';
 $platformMap = $platformMap ?? [];
 $platformMap = is_array($platformMap) ? $platformMap : [];
 $platformBadgeStyle = static function (int $id) use ($platformMap): string {
@@ -98,6 +98,7 @@ $countMode  = (string) ($countMode ?? 'estimated');
         <div class="search-toolbar__sort">
             <label class="sr-only" for="sort-select">Trier par</label>
             <select class="sort-select" id="sort-select" name="sort" form="filters-form">
+                <option value="" <?= ($currentSort === 'all') ? 'selected' : '' ?>>Tous les jeux</option>
                 <?php foreach ($sortOptions as $val => $label): ?>
                     <option value="<?= $val ?>" <?= $currentSort === $val ? 'selected' : '' ?>>
                         <?= $label ?>

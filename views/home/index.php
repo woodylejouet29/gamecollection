@@ -56,7 +56,8 @@ function fmtDate(?string $date): string {
             <?php if (!empty($authUser['avatar_url'])): ?>
                 <img src="<?= htmlspecialchars($authUser['avatar_url']) ?>"
                      alt=""
-                     class="hero-user__avatar">
+                     class="hero-user__avatar"
+                     loading="lazy">
             <?php else: ?>
                 <span class="hero-user__avatar-placeholder" aria-hidden="true">
                     <?= strtoupper(substr($authUser['username'] ?? 'U', 0, 1)) ?>
@@ -455,7 +456,8 @@ function fmtDate(?string $date): string {
                     <?php if (!empty($user['avatar_url'])): ?>
                         <img src="<?= htmlspecialchars($user['avatar_url']) ?>"
                              alt=""
-                             class="review-card__avatar">
+                             class="review-card__avatar"
+                             loading="lazy">
                     <?php else: ?>
                         <span class="review-card__avatar-placeholder" aria-hidden="true">
                             <?= strtoupper(substr($user['username'] ?? 'U', 0, 1)) ?>

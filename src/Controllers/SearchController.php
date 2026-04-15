@@ -24,7 +24,7 @@ class SearchController
                 unset($params['year_from'], $params['year_to']);
 
                 if (($params['sort'] ?? null) === 'oldest') {
-                    unset($params['sort']); // retombe sur le défaut "recent"
+                    unset($params['sort']); // retombe sur le défaut « tous les jeux »
                 }
 
                 // Ces paramètres dépendent des filtres/résultats, on les retire pour éviter incohérences.
@@ -72,14 +72,21 @@ class SearchController
         }
         $genres = array_values(array_unique($genres));
 
+        $sortGet = trim((string) ($_GET['sort'] ?? ''));
+        if ($sortGet === 'all' || $sortGet === '') {
+            $sort = 'all';
+        } elseif (in_array($sortGet, ['recent', 'upcoming', 'rating'], true)) {
+            $sort = $sortGet;
+        } else {
+            $sort = 'all';
+        }
+
         $filters = [
             'q'          => trim($_GET['q']          ?? ''),
             'platforms'  => $platforms,
             'genres'     => $genres,
             'rating_min' => (int) ($_GET['rating_min'] ?? 0),
-            'sort'       => in_array($_GET['sort'] ?? '', ['recent', 'upcoming', 'rating'], true)
-                                ? $_GET['sort']
-                                : 'recent',
+            'sort'       => $sort,
         ];
 
         $perPage = 24;
@@ -150,7 +157,7 @@ class SearchController
             : 'Catalogue des jeux';
 
         // Filtres « actifs » pour le badge FAB / lien Réinitialiser : uniquement la sidebar
-        // (pas la recherche `q`, pas le tri par défaut `sort`, aligné avec search.js updateFabBadge).
+        // (pas la recherche `q`, pas le tri par défaut « tous les jeux » (`sort=all`), aligné avec search.js updateFabBadge).
         $activeFilters = $this->sidebarActiveFilters($filters);
 
         View::render('search/index', [
@@ -206,6 +213,13 @@ class SearchController
             if ($k === 'q') {
                 $v = trim((string) $v);
                 if ($v !== '') $params['q'] = $v;
+                continue;
+            }
+            if ($k === 'sort') {
+                $sv = is_string($v) ? trim($v) : (string) $v;
+                if ($sv !== '' && $sv !== 'all') {
+                    $params['sort'] = $sv;
+                }
                 continue;
             }
             if ($v === '' || $v === 0 || $v === '0' || $v === null) {

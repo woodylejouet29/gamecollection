@@ -28,7 +28,7 @@ function navActiveClass(string $currentPath, string $prefix): string {
             <img
                 class="header__logo-img header__logo-img--desktop-dark"
                 src="/images/logositeblanc.png"
-                alt="GameCollection"
+                alt="PlayShelf"
                 width="140"
                 height="36"
                 loading="eager"
@@ -37,7 +37,7 @@ function navActiveClass(string $currentPath, string $prefix): string {
             <img
                 class="header__logo-img header__logo-img--desktop-light"
                 src="/images/logositenoir.png"
-                alt="GameCollection"
+                alt="PlayShelf"
                 width="140"
                 height="36"
                 loading="eager"
@@ -46,7 +46,7 @@ function navActiveClass(string $currentPath, string $prefix): string {
             <img
                 class="header__logo-img header__logo-img--mobile-dark"
                 src="/images/logomobileblanc.png"
-                alt="GameCollection"
+                alt="PlayShelf"
                 width="36"
                 height="36"
                 loading="eager"
@@ -55,7 +55,7 @@ function navActiveClass(string $currentPath, string $prefix): string {
             <img
                 class="header__logo-img header__logo-img--mobile-light"
                 src="/images/logomobilenoir.png"
-                alt="GameCollection"
+                alt="PlayShelf"
                 width="36"
                 height="36"
                 loading="eager"
@@ -166,7 +166,7 @@ function navActiveClass(string $currentPath, string $prefix): string {
                 </div>
             </a>
         <?php else: ?>
-            <span class="header__drawer-brand">GameCollection</span>
+            <span class="header__drawer-brand">PlayShelf</span>
         <?php endif; ?>
         <button class="header__drawer-close" id="header-drawer-close" aria-label="Fermer le menu">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">

@@ -5,17 +5,47 @@ $year = (int) date('Y');
 <footer class="site-footer" role="contentinfo">
     <div class="container site-footer__inner">
 
-        <div class="site-footer__brand">
+        <div class="site-footer__top">
             <a href="/" class="site-footer__logo" aria-label="Accueil">
-                <svg class="site-footer__logo-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <path d="M6 12h4m-2-2v4M15 11h.01M18 11h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    <rect x="2" y="6" width="20" height="12" rx="3" stroke="currentColor" stroke-width="2"/>
-                </svg>
-                <span class="site-footer__logo-text">NomDuSite</span>
+                <img
+                    class="site-footer__logo-img site-footer__logo-img--desktop-dark"
+                    src="/images/logositeblanc.png"
+                    alt="PlayShelf"
+                    width="140"
+                    height="36"
+                    loading="lazy"
+                    decoding="async"
+                >
+                <img
+                    class="site-footer__logo-img site-footer__logo-img--desktop-light"
+                    src="/images/logositenoir.png"
+                    alt="PlayShelf"
+                    width="140"
+                    height="36"
+                    loading="lazy"
+                    decoding="async"
+                >
+                <img
+                    class="site-footer__logo-img site-footer__logo-img--mobile-dark"
+                    src="/images/logomobileblanc.png"
+                    alt="PlayShelf"
+                    width="36"
+                    height="36"
+                    loading="lazy"
+                    decoding="async"
+                >
+                <img
+                    class="site-footer__logo-img site-footer__logo-img--mobile-light"
+                    src="/images/logomobilenoir.png"
+                    alt="PlayShelf"
+                    width="36"
+                    height="36"
+                    loading="lazy"
+                    decoding="async"
+                >
             </a>
-            <p class="site-footer__tagline">Ta tagline ici</p>
 
-            <div class="site-footer__social" aria-label="Réseaux sociaux">
+            <nav class="site-footer__social" aria-label="Réseaux sociaux">
                 <a class="site-footer__social-link" href="#" aria-label="Twitter / X">
                     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                         <path d="M18 2h3l-7 8 8 12h-6l-5-7-6 7H2l8-9L3 2h6l4 6 5-6Z" fill="currentColor"/>
@@ -33,61 +63,33 @@ $year = (int) date('Y');
                         <path d="M17.5 6.5h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
                     </svg>
                 </a>
-            </div>
+            </nav>
         </div>
 
-        <div class="site-footer__cols" aria-label="Liens de pied de page">
-            <details class="site-footer__col" open>
-                <summary class="site-footer__col-title">Contact</summary>
-                <div class="site-footer__col-body">
-                    <a class="site-footer__link site-footer__link--btn" href="/contact">Contacter</a>
-                    <a class="site-footer__link" href="#discord">Discord</a>
-                </div>
-            </details>
+        <nav aria-label="Liens de pied de page">
+            <ul class="site-footer__links">
+                <li><a class="site-footer__link" href="/contact">Contacter</a></li>
+                <li aria-hidden="true" class="site-footer__links-sep">·</li>
+                <li><a class="site-footer__link" href="#discord">Discord</a></li>
+                <li aria-hidden="true" class="site-footer__links-sep">·</li>
+                <li><span class="site-footer__link is-disabled" aria-disabled="true" tabindex="-1">FAQ (bientôt)</span></li>
+                <li aria-hidden="true" class="site-footer__links-sep">·</li>
+                <li><span class="site-footer__link is-disabled" aria-disabled="true" tabindex="-1">Signaler un bug (bientôt)</span></li>
+                <li aria-hidden="true" class="site-footer__links-sep">·</li>
+                <li><a class="site-footer__link" href="/legal">Legal</a></li>
+                <li aria-hidden="true" class="site-footer__links-sep">·</li>
+                <li><a class="site-footer__link" href="/privacy">Privacy</a></li>
+                <li aria-hidden="true" class="site-footer__links-sep">·</li>
+                <li><a class="site-footer__link" href="/terms">Terms</a></li>
+                <li aria-hidden="true" class="site-footer__links-sep">·</li>
+                <li><a class="site-footer__link" href="/cookies">Cookies</a></li>
+            </ul>
+        </nav>
 
-            <details class="site-footer__col" open>
-                <summary class="site-footer__col-title">Support</summary>
-                <div class="site-footer__col-body">
-                    <span class="site-footer__link is-disabled" aria-disabled="true" tabindex="-1">FAQ (bientôt)</span>
-                    <span class="site-footer__link is-disabled" aria-disabled="true" tabindex="-1">Signaler un bug (bientôt)</span>
-                    <span class="site-footer__link is-disabled" aria-disabled="true" tabindex="-1">Aide (bientôt)</span>
-                </div>
-            </details>
-
-            <details class="site-footer__col" open>
-                <summary class="site-footer__col-title">Légal</summary>
-                <div class="site-footer__col-body">
-                    <a class="site-footer__link" href="/legal">Legal</a>
-                    <a class="site-footer__link" href="/privacy">Privacy</a>
-                    <a class="site-footer__link" href="/terms">Terms</a>
-                    <a class="site-footer__link" href="/cookies">Cookies</a>
-                </div>
-            </details>
+        <div class="site-footer__bar">
+            <p>Projet en développement — retours bienvenus.</p>
+            <p>© <?= $year ?> PlayShelf</p>
         </div>
+
     </div>
-
-    <div class="site-footer__bar">
-        <div class="container site-footer__bar-inner">
-            <p class="site-footer__trust">
-                Projet en développement — retours bienvenus.
-            </p>
-            <p class="site-footer__copy">© <?= $year ?> NomDuSite</p>
-        </div>
-    </div>
-
-    <script>
-        (() => {
-            const closeFooterDetailsOnMobile = () => {
-                if (!window.matchMedia || !window.matchMedia('(max-width: 900px)').matches) return;
-                document.querySelectorAll('.site-footer__cols details.site-footer__col[open]')
-                    .forEach((d) => d.removeAttribute('open'));
-            };
-
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', closeFooterDetailsOnMobile, { once: true });
-            } else {
-                closeFooterDetailsOnMobile();
-            }
-        })();
-    </script>
 </footer>

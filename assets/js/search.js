@@ -207,7 +207,9 @@ const SelectionStore = (() => {
             });
 
             if (!res.ok) throw new Error('not found');
-            currentGame = await res.json();
+            const payload = await res.json();
+            // L’API renvoie { success, data } (voir GameApiController::show) ; le jeu est dans data.
+            currentGame = payload?.data ?? payload;
             renderModal(currentGame);
         } catch {
             if (loading) loading.innerHTML = '<p style="padding:2rem;text-align:center;color:var(--muted)">Impossible de charger ce jeu.</p>';

@@ -25,7 +25,7 @@ class GameApiController
         $service = new SearchService();
         $results = $service->searchSuggest($q, $limit);
 
-        $this->json($results);
+        $this->json(['success' => true, 'data' => $results]);
     }
 
     /**
@@ -36,7 +36,7 @@ class GameApiController
         $gameId = (int) $id;
 
         if ($gameId <= 0) {
-            $this->json(['error' => 'Identifiant invalide'], 400);
+            $this->json(['success' => false, 'error' => ['code' => 'VALIDATION_ERROR', 'message' => 'Identifiant invalide']], 400);
             return;
         }
 
@@ -44,11 +44,11 @@ class GameApiController
         $game    = $service->getGame($gameId);
 
         if ($game === null) {
-            $this->json(['error' => 'Jeu introuvable'], 404);
+            $this->json(['success' => false, 'error' => ['code' => 'NOT_FOUND', 'message' => 'Jeu introuvable']], 404);
             return;
         }
 
-        $this->json($game);
+        $this->json(['success' => true, 'data' => $game]);
     }
 
     // ──────────────────────────────────────────────

@@ -43,8 +43,20 @@ $ogUrl    = $ogUrl    ?? $appUrl . ($_SERVER['REQUEST_URI'] ?? '/');
         <?= $content ?>
     </main>
     <?php require __DIR__ . '/../partials/footer.php'; ?>
+    
+    <!-- Scripts de base -->
     <script src="<?= \App\Core\View::asset('js/theme.js') ?>" defer></script>
     <script src="<?= \App\Core\View::asset('js/app.js') ?>" defer></script>
+    
+    <!-- Turnstile : init explicite sur /login et /register (même clé de test en dev sans .env) -->
+    <?php
+    $uriAuth = $_SERVER['REQUEST_URI'] ?? '';
+    $isAuthTurnstilePage = str_contains($uriAuth, '/login') || str_contains($uriAuth, '/register');
+    ?>
+    <?php if ($isAuthTurnstilePage): ?>
+    <script src="<?= \App\Core\View::asset('js/turnstile.js') ?>" defer></script>
+    <?php endif; ?>
+    
     <?= $foot ?>
 </body>
 </html>

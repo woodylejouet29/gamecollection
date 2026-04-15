@@ -35,10 +35,16 @@ class TurnstileService
         }
 
         try {
-            $http = new Client(['timeout' => 5, 'http_errors' => false]);
+            $http = new Client(['timeout' => 10, 'http_errors' => false]);
 
             $params = ['secret' => $secret, 'response' => $token];
-            if ($ip) {
+            // remoteip est optionnel ; derrière proxy / IPv6 / CDN, une IP incorrecte peut faire échouer
+            // la vérification sur certains navigateurs ou réseaux. N’envoyer que si explicitement demandé.
+            $sendIp = filter_var(
+                $_ENV['TURNSTILE_VERIFY_REMOTEIP'] ?? 'false',
+                FILTER_VALIDATE_BOOLEAN
+            );
+            if ($sendIp && $ip !== null && $ip !== '') {
                 $params['remoteip'] = $ip;
             }
 

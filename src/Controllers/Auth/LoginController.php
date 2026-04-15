@@ -18,10 +18,20 @@ class LoginController
     {
         AuthMiddleware::requireGuest();
 
+        $env          = $_ENV['APP_ENV'] ?? 'development';
+        $useRealInDev = ($_ENV['TURNSTILE_USE_REAL_IN_DEV'] ?? 'false') === 'true';
+        $siteKey      = $_ENV['TURNSTILE_SITE_KEY'] ?? '';
+        if ($env !== 'production' && !$useRealInDev) {
+            $siteKey = '1x00000000000000000000AA';
+        }
+
         View::render('auth/login', [
-            'title'   => 'Connexion',
-            'cssFile' => 'auth',
-            'head'    => '<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>',
+            'title'            => 'Connexion',
+            'cssFile'          => 'auth',
+            'turnstileSiteKey' => $siteKey,
+            'head'             => $siteKey !== ''
+                ? '<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" defer></script>'
+                : '',
         ]);
     }
 

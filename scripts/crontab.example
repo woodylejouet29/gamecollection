@@ -1,0 +1,40 @@
+# Exemple de configuration crontab pour le projet de collection de jeux
+# À adapter selon votre environnement
+
+# ──────────────────────────────────────────────
+#  Synchronisation IGDB quotidienne (P2)
+# ──────────────────────────────────────────────
+# Tous les jours à 3h du matin
+0 3 * * * cd /chemin/vers/gameproject && php scripts/igdb_sync.php >> logs/igdb-sync.log 2>&1
+
+# ──────────────────────────────────────────────
+#  Nettoyage hebdomadaire (P5 - Bloc 5.1)
+# ──────────────────────────────────────────────
+# Tous les dimanches à 2h du matin
+0 2 * * 0 cd /chemin/vers/gameproject && php scripts/weekly_cleanup.php >> logs/weekly-cleanup.log 2>&1
+
+# ──────────────────────────────────────────────
+#  Sauvegarde de la base de données
+# ──────────────────────────────────────────────
+# Tous les jours à 4h du matin
+0 4 * * * pg_dump -h votre-host.supabase.co -p 5432 -U postgres -d votre-base > /backups/supabase-$(date +\%Y\%m\%d).sql
+
+# ──────────────────────────────────────────────
+#  Rotation des logs d'application
+# ──────────────────────────────────────────────
+# Tous les jours à minuit
+0 0 * * * find /chemin/vers/gameproject/logs -name "*.log" -mtime +7 -delete
+
+# ──────────────────────────────────────────────
+#  Instructions d'installation
+# ──────────────────────────────────────────────
+# 1. Remplacer /chemin/vers/gameproject par le chemin absolu de votre projet
+# 2. Adapter les chemins de logs selon votre configuration
+# 3. Pour Supabase, utiliser pg_dump avec vos credentials
+# 4. Installer avec : crontab crontab.example
+
+# Pour vérifier les tâches cron :
+# crontab -l
+
+# Pour éditer les tâches cron :
+# crontab -e

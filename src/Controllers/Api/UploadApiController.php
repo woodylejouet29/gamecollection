@@ -70,7 +70,7 @@ final class UploadApiController
             $this->json(['success' => false, 'error' => ['code' => 'MOVE_FAILED']], 500);
         }
 
-        $this->json(['success' => true, 'url' => '/assets/uploads/selection/' . $filename]);
+        $this->json(['success' => true, 'data' => ['url' => '/assets/uploads/selection/' . $filename]]);
     }
 
     private function json(mixed $data, int $status = 200): never

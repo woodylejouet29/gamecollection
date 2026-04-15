@@ -121,6 +121,34 @@ class CollectionService
     }
 
     // ──────────────────────────────────────────────────────────────────
+    //  Récupération d'une entrée
+    // ──────────────────────────────────────────────────────────────────
+
+    /**
+     * Récupère une entrée de collection par son ID pour un utilisateur donné.
+     * Retourne null si non trouvée.
+     */
+    public function getEntry(string $userId, int $entryId): ?array
+    {
+        $url = $this->supabaseUrl . '/rest/v1/collection_entries'
+            . '?user_id=eq.' . rawurlencode($userId)
+            . '&id=eq.' . $entryId
+            . '&select=id,game_id,status,platform_id,game_version_id,region,game_type'
+            . '&limit=1';
+
+        $response = $this->http->get($url, [
+            'headers' => $this->headers(),
+        ]);
+
+        $data = json_decode((string) $response->getBody(), true);
+        if (!is_array($data) || empty($data)) {
+            return null;
+        }
+
+        return $data[0];
+    }
+
+    // ──────────────────────────────────────────────────────────────────
     //  Avis
     // ──────────────────────────────────────────────────────────────────
 

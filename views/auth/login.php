@@ -43,13 +43,15 @@ use App\Core\Flash;
                 Rester connecté <span class="form-hint">(30 jours)</span>
             </label>
 
-            <!-- Turnstile -->
-            <?php if (!empty($_ENV['TURNSTILE_SITE_KEY'])): ?>
+            <!-- Turnstile (rendu explicite via assets/js/turnstile.js) -->
+            <?php
+            $turnstileSiteKey = $turnstileSiteKey ?? ($_ENV['TURNSTILE_SITE_KEY'] ?? '');
+            ?>
+            <?php if (!empty($turnstileSiteKey)): ?>
             <div class="form-group form-group--center">
-                <div class="cf-turnstile"
-                     data-sitekey="<?= htmlspecialchars($_ENV['TURNSTILE_SITE_KEY']) ?>"
-                     data-theme="<?= ($_COOKIE['theme'] ?? 'dark') === 'light' ? 'light' : 'dark' ?>">
-                </div>
+                <div class="turnstile-mount"
+                     data-sitekey="<?= htmlspecialchars($turnstileSiteKey) ?>"
+                     data-theme="<?= ($_COOKIE['theme'] ?? 'dark') === 'light' ? 'light' : 'dark' ?>"></div>
             </div>
             <?php endif; ?>
 

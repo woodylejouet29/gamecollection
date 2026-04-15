@@ -1,26 +1,44 @@
 -- ================================================================
 -- 010_bootstrap_v2.sql — Nouveau projet (perf + 300k+ games)
 --
--- À exécuter dans : Supabase Dashboard → SQL Editor
+-- Exécuter le fichier ENTIER d’un coup (DBeaver : Ctrl+Alt+X ou « Execute SQL Script »).
+-- Un seul « Execute Statement » sur une ligne du milieu saute les ENUM → erreur game_type.
+--
 -- Objectif :
 --   - éviter OFFSET profond, counts exact, filtres JSONB non indexés
 --   - rendre la recherche rapide (GIN/trgm + arrays + indexes de tri)
 --   - éviter les migrations "fix jsonb_typeof(...)" en stockant les champs correctement
 -- ================================================================
 
+SET search_path TO public, pg_catalog;
+
+-- PostgreSQL dédié : pas de schéma auth Supabase par défaut
+CREATE SCHEMA IF NOT EXISTS auth;
+CREATE TABLE IF NOT EXISTS auth.users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+);
+
 -- Extensions
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 -- ----------------------------------------------------------------
--- ENUM TYPES
+-- ENUM TYPES (public.* + un DO par type : un duplicate n’empêche pas les autres)
 -- ----------------------------------------------------------------
 DO $$ BEGIN
-    CREATE TYPE game_type     AS ENUM ('physical', 'digital');
-    CREATE TYPE game_region   AS ENUM ('PAL', 'NTSC-U', 'NTSC-J', 'NTSC-K', 'other');
-    CREATE TYPE game_status   AS ENUM ('owned', 'playing', 'completed', 'hundred_percent', 'abandoned', 'wishlist');
-    CREATE TYPE physical_cond AS ENUM ('mint', 'near_mint', 'very_good', 'good', 'acceptable', 'poor', 'damaged', 'incomplete');
-    CREATE TYPE log_level     AS ENUM ('debug', 'info', 'warning', 'error', 'critical');
+    CREATE TYPE public.game_type AS ENUM ('physical', 'digital');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+    CREATE TYPE public.game_region AS ENUM ('PAL', 'NTSC-U', 'NTSC-J', 'NTSC-K', 'other');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+    CREATE TYPE public.game_status AS ENUM ('owned', 'playing', 'completed', 'hundred_percent', 'abandoned', 'wishlist');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+    CREATE TYPE public.physical_cond AS ENUM ('mint', 'near_mint', 'very_good', 'good', 'acceptable', 'poor', 'damaged', 'incomplete');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+    CREATE TYPE public.log_level AS ENUM ('debug', 'info', 'warning', 'error', 'critical');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- ----------------------------------------------------------------
@@ -113,7 +131,7 @@ CREATE TABLE IF NOT EXISTS game_platforms (
     id           BIGSERIAL   PRIMARY KEY,
     game_id      BIGINT      NOT NULL REFERENCES games(id) ON DELETE CASCADE,
     platform_id  BIGINT      NOT NULL REFERENCES platforms(id) ON DELETE CASCADE,
-    region       game_region,
+    region       public.game_region,
     release_date DATE,
     created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE (game_id, platform_id, region)
@@ -142,14 +160,14 @@ CREATE TABLE IF NOT EXISTS collection_entries (
     game_id            BIGINT        NOT NULL REFERENCES games(id),
     platform_id        BIGINT        NOT NULL REFERENCES platforms(id),
     game_version_id    BIGINT        REFERENCES game_versions(id),
-    region             game_region   NOT NULL,
-    game_type          game_type     NOT NULL,
-    status             game_status   NOT NULL DEFAULT 'owned',
+    region             public.game_region   NOT NULL,
+    game_type          public.game_type     NOT NULL,
+    status             public.game_status   NOT NULL DEFAULT 'owned',
     acquired_at        DATE,
     price_paid         DECIMAL(8,2),
     play_time_minutes  INTEGER,
     rank_position      INTEGER        NOT NULL DEFAULT 0,
-    physical_condition physical_cond,
+    physical_condition public.physical_cond,
     condition_note     VARCHAR(500),
     has_box            BOOLEAN,
     has_manual         BOOLEAN,
@@ -181,7 +199,7 @@ CREATE TABLE IF NOT EXISTS wishlist (
 
 CREATE TABLE IF NOT EXISTS logs (
     id         BIGSERIAL   PRIMARY KEY,
-    level      log_level   NOT NULL DEFAULT 'info',
+    level      public.log_level   NOT NULL DEFAULT 'info',
     message    TEXT        NOT NULL,
     context    JSONB       NOT NULL DEFAULT '{}',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

@@ -35,7 +35,7 @@ class RegisterController
             'title'     => 'Créer un compte',
             'cssFile'   => 'auth',
             'head'      => $siteKey !== ''
-                ? '<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>'
+                ? '<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" defer></script>'
                 : '',
             'turnstileSiteKey' => $siteKey,
             'platforms' => $platforms,
@@ -96,15 +96,10 @@ class RegisterController
 
         $userId = $result['data']['user_id'];
 
-        // Préférences plateformes / genres
+        // Préférences plateformes / genres (déjà validées dans validate())
         $catalog     = (new SearchService())->getPlatformsCatalogForRegistration();
-        $allowedIds  = array_fill_keys(array_column($catalog, 'id'), true);
-        $rawPlatform = array_map('intval', (array)($_POST['platforms'] ?? []));
-        $platformIds = array_values(array_unique(array_filter(
-            $rawPlatform,
-            static fn(int $id): bool => $id > 0 && isset($allowedIds[$id])
-        )));
-        $genreIds    = array_map('intval', (array)($_POST['genres'] ?? []));
+        $platformIds = $this->normalizedPlatformIdsFromPost($_POST, $catalog);
+        $genreIds    = $this->normalizedGenreIdsFromPost($_POST);
         $genreNames  = array_map(fn(int $id) => StaticData::genreNameById($id), $genreIds);
         $auth->savePreferences($userId, $platformIds, $genreIds, $genreNames);
 
@@ -166,7 +161,45 @@ class RegisterController
             $errors['confirm_password'] = 'Les mots de passe ne correspondent pas.';
         }
 
+        $catalog      = (new SearchService())->getPlatformsCatalogForRegistration();
+        $platformIds  = $this->normalizedPlatformIdsFromPost($data, $catalog);
+        if ($catalog !== [] && $platformIds === []) {
+            $errors['platforms'] = 'Sélectionnez au moins une plateforme possédée.';
+        }
+
+        $genreIds = $this->normalizedGenreIdsFromPost($data);
+        if ($genreIds === []) {
+            $errors['genres'] = 'Sélectionnez au moins un genre préféré.';
+        }
+
         return $errors;
+    }
+
+    /**
+     * @param array<int, array{id:int, ...}> $catalog
+     * @return list<int>
+     */
+    private function normalizedPlatformIdsFromPost(array $data, array $catalog): array
+    {
+        $allowedIds = array_fill_keys(array_column($catalog, 'id'), true);
+        $raw        = array_map('intval', (array) ($data['platforms'] ?? []));
+
+        return array_values(array_unique(array_filter(
+            $raw,
+            static fn(int $id): bool => $id > 0 && isset($allowedIds[$id])
+        )));
+    }
+
+    /** @return list<int> */
+    private function normalizedGenreIdsFromPost(array $data): array
+    {
+        $allowed = array_fill_keys(array_column(StaticData::genres(), 'id'), true);
+        $raw     = array_map('intval', (array) ($data['genres'] ?? []));
+
+        return array_values(array_unique(array_filter(
+            $raw,
+            static fn(int $id): bool => $id > 0 && isset($allowed[$id])
+        )));
     }
 
     // ──────────────────────────────────────────────

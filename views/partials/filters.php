@@ -13,6 +13,8 @@
  * Le JS (app.js) gère l'ouverture/fermeture du panel.
  */
 
+use App\Data\GenreTranslations;
+
 $filterOptions = $filterOptions ?? [];
 $activeFilters = $activeFilters ?? $_GET;
 
@@ -21,8 +23,6 @@ $displayFilters = array_diff_key($activeFilters, ['page' => '', 'sort' => '']);
 
 // Libellés lisibles pour les tags actifs
 $filterLabels = [
-    'year_from'  => 'Depuis',
-    'year_to'    => "Jusqu'à",
     'rating_min' => 'Note min',
     'platform'   => 'Plateforme',
     'genre'      => 'Genre',
@@ -121,27 +121,6 @@ $regionOptions = [
                        value="<?= htmlspecialchars($activeFilters['q'] ?? '') ?>">
             </div>
 
-            <?php /* Années */ ?>
-            <div class="form-group">
-                <label class="form-label">Année de sortie</label>
-                <div class="form-row">
-                    <input type="number"
-                           class="form-input"
-                           name="year_from"
-                           placeholder="Depuis"
-                           min="1950"
-                           max="<?= date('Y') + 3 ?>"
-                           value="<?= htmlspecialchars($activeFilters['year_from'] ?? '') ?>">
-                    <input type="number"
-                           class="form-input"
-                           name="year_to"
-                           placeholder="Jusqu'à"
-                           min="1950"
-                           max="<?= date('Y') + 3 ?>"
-                           value="<?= htmlspecialchars($activeFilters['year_to'] ?? '') ?>">
-                </div>
-            </div>
-
             <?php /* Note */ ?>
             <div class="form-group">
                 <label class="form-label" for="f-rating">Note minimum IGDB</label>
@@ -178,9 +157,10 @@ $regionOptions = [
                 <select class="form-input" id="f-genre" name="genre">
                     <option value="">Tous les genres</option>
                     <?php foreach ($filterOptions['genres'] as $g): ?>
-                    <option value="<?= htmlspecialchars($g['name']) ?>"
-                        <?= ($activeFilters['genre'] ?? '') === $g['name'] ? 'selected' : '' ?>>
-                        <?= htmlspecialchars($g['name']) ?>
+                    <?php $name = is_array($g) ? (string)($g['name'] ?? '') : (string)$g; ?>
+                    <option value="<?= htmlspecialchars($name) ?>"
+                        <?= ($activeFilters['genre'] ?? '') === $name ? 'selected' : '' ?>>
+                        <?= htmlspecialchars(GenreTranslations::translate($name)) ?>
                     </option>
                     <?php endforeach; ?>
                 </select>

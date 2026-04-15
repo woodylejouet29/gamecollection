@@ -29,6 +29,7 @@ $ogUrl    = $ogUrl    ?? $appUrl . ($_SERVER['REQUEST_URI'] ?? '/');
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Syne:wght@700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="<?= \App\Core\View::asset('css/global.css') ?>">
+    <link rel="stylesheet" href="<?= \App\Core\View::asset('css/platform-badges.css') ?>">
     <link rel="stylesheet" href="<?= \App\Core\View::asset('css/footer.css') ?>">
     <?php if ($cssFile): ?>
     <link rel="stylesheet" href="<?= \App\Core\View::asset('css/' . $cssFile . '.css') ?>">

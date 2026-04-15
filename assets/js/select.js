@@ -33,8 +33,8 @@ const LABELS = {
         abandoned:       'Abandonné',
     },
     conditions: {
-        mint:       'Parfait (Mint)',
-        near_mint:  'Quasi parfait (Near Mint)',
+        mint:       'Neuf - Sous blister',
+        near_mint:  'Neuf',
         very_good:  'Très bon état',
         good:       'Bon état',
         acceptable: 'État acceptable',

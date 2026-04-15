@@ -51,24 +51,39 @@ if (!function_exists('searchFmtDateShort')) {
 $viewMode    = $_COOKIE['view_mode'] ?? 'grid';
 $currentSort = $filters['sort'] ?? 'recent';
 $platformMap = $platformMap ?? [];
+$platformMap = is_array($platformMap) ? $platformMap : [];
+$platformBadgeStyle = static function (int $id) use ($platformMap): string {
+    $row = $platformMap[$id] ?? null;
+    if (!is_array($row)) return '';
+    return \App\Data\PlatformBadgeColors::style(
+        $id,
+        (string) ($row['slug'] ?? ''),
+        (string) ($row['abbreviation'] ?? ''),
+        (string) ($row['name'] ?? '')
+    );
+};
 $sortOptions = [
     'recent'     => 'Plus récents',
     'upcoming'   => 'Prochaines sorties',
-    'oldest'     => 'Plus anciens',
     'rating'     => 'Mieux notés',
-    'title_asc'  => 'Titre A→Z',
-    'title_desc' => 'Titre Z→A',
 ];
 
 $baseUrl    = $baseUrl ?? '/search';
 $nextCursor = $nextCursor ?? null;
 $pageSize   = (int) ($pageSize ?? 24);
+$error      = !empty($error);
+$countMode  = (string) ($countMode ?? 'estimated');
 ?>
 
 <?php /* Toolbar : compteur + tri + toggle vue */ ?>
 <div class="search-toolbar">
     <p class="search-toolbar__count" id="results-count" aria-live="polite" aria-atomic="true">
-        <?php if ($totalResults > 0): ?>
+        <?php if ($countMode === 'none' && !empty($games)): ?>
+            <strong><?= number_format(is_array($games) ? count($games) : 0) ?>+</strong> résultats
+            <?php if (!empty($filters['q'])): ?>
+                pour <em>« <?= htmlspecialchars($filters['q']) ?> »</em>
+            <?php endif; ?>
+        <?php elseif ($totalResults > 0): ?>
             <strong><?= number_format($totalResults) ?></strong>
             <?= $totalResults === 1 ? 'résultat' : 'résultats' ?>
             <?php if (!empty($filters['q'])): ?>
@@ -95,7 +110,17 @@ $pageSize   = (int) ($pageSize ?? 24);
 </div>
 
 <?php /* Grille de résultats */ ?>
-<?php if (empty($games)): ?>
+<?php if ($error): ?>
+    <div class="search-empty">
+        <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <path d="M32 6c14.36 0 26 11.64 26 26S46.36 58 32 58 6 46.36 6 32 17.64 6 32 6z"/>
+            <path d="M32 18v16" stroke-linecap="round"/>
+            <path d="M32 42h.01" stroke-linecap="round"/>
+        </svg>
+        <p>Erreur temporaire lors du chargement des résultats. Réessayez dans quelques secondes.</p>
+        <a href="<?= htmlspecialchars($baseUrl) ?>" class="btn btn--secondary">Réessayer</a>
+    </div>
+<?php elseif (empty($games)): ?>
     <div class="search-empty">
         <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
             <circle cx="28" cy="28" r="20"/><path d="M44 44l12 12"/>
@@ -125,7 +150,11 @@ $pageSize   = (int) ($pageSize ?? 24);
                     if ($pid <= 0) continue;
                     if (isset($platformMap[$pid])) {
                         if (count($platformBadges) < 2) {
-                            $platformBadges[] = $platformMap[$pid];
+                            $row = $platformMap[$pid];
+                            $platformBadges[] = [
+                                'id' => $pid,
+                                'label' => is_array($row) ? (string) ($row['label'] ?? '') : (string) $row,
+                            ];
                         } else {
                             $platformBadgeExtraCount++;
                         }
@@ -170,11 +199,14 @@ $pageSize   = (int) ($pageSize ?? 24);
                     </h2>
                     <?php if (!empty($platformBadges)): ?>
                         <div class="search-card__platforms" aria-label="Plateformes">
-                            <?php foreach ($platformBadges as $lbl): ?>
-                                <span class="search-card__platform-badge"><?= htmlspecialchars($lbl) ?></span>
+                            <?php foreach ($platformBadges as $b): ?>
+                                <span class="platform-badge platform-badge--xs"
+                                      style="<?= htmlspecialchars($platformBadgeStyle((int)($b['id'] ?? 0)), ENT_QUOTES) ?>">
+                                    <?= htmlspecialchars((string)($b['label'] ?? '')) ?>
+                                </span>
                             <?php endforeach; ?>
                             <?php if ($platformBadgeExtraCount > 0): ?>
-                                <span class="search-card__platform-badge search-card__platform-badge--more">
+                                <span class="platform-badge platform-badge--xs platform-badge--more">
                                     <?= $platformBadgeExtraCount ?> autre<?= $platformBadgeExtraCount > 1 ? 's' : '' ?>
                                 </span>
                             <?php endif; ?>
@@ -201,6 +233,7 @@ $pageSize   = (int) ($pageSize ?? 24);
 
     <?php
         $gamesCount = is_array($games) ? count($games) : 0;
+        $countModeForPager = $countMode;
         require __DIR__ . '/../partials/pagination_cursor.php';
     ?>
 <?php endif; ?>

@@ -55,6 +55,14 @@
         const menu = $('#col-export-menu');
         if (!wrap || !btn || !menu) return;
 
+        // Conserver les filtres courants dans l'export "par plateforme"
+        const xlsxByPlat = document.getElementById('col-export-xlsx-by-platform');
+        if (xlsxByPlat) {
+            const qs = window.location.search || '';
+            const base = xlsxByPlat.getAttribute('href') || '/api/collection/export-xlsx-by-platform';
+            xlsxByPlat.setAttribute('href', base + qs);
+        }
+
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
             const open = menu.hidden === false;

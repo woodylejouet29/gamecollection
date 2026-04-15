@@ -8,6 +8,8 @@ use App\Core\Middleware\AuthMiddleware;
 use App\Core\Logger;
 use App\Services\CollectionService;
 use App\Services\CollectionListService;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 /**
  * POST /api/collection/add
@@ -341,6 +343,156 @@ class CollectionApiController
         }
         fclose($out);
         exit;
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    //  GET /api/collection/export-xlsx-by-platform
+    // ──────────────────────────────────────────────────────────────────
+
+    public function exportByPlatformXlsx(): void
+    {
+        AuthMiddleware::requireAuth();
+        $userId = AuthMiddleware::userId();
+        if (!$userId) {
+            http_response_code(401);
+            exit;
+        }
+
+        // Filtres identiques à /collection
+        $filters = [
+            'list'      => trim((string) ($_GET['list'] ?? 'all')) ?: 'all',
+            'platform'  => (int) ($_GET['platform'] ?? 0),
+            'status'    => trim((string) ($_GET['status'] ?? '')),
+            'game_type' => trim((string) ($_GET['game_type'] ?? '')),
+            'region'    => trim((string) ($_GET['region'] ?? '')),
+            'condition' => trim((string) ($_GET['condition'] ?? '')),
+            'q'         => trim((string) ($_GET['q'] ?? '')),
+            'sort'      => trim((string) ($_GET['sort'] ?? 'recent')) ?: 'recent',
+        ];
+
+        $service = new CollectionListService();
+        $entries = $service->exportFiltered($userId, $filters);
+
+        // Grouper par plateforme
+        $byPlatform = [];
+        foreach ($entries as $e) {
+            $pid  = (int) ($e['platform_id'] ?? 0);
+            $abbr = trim((string) ($e['platform']['abbreviation'] ?? ''));
+            $name = trim((string) ($e['platform']['name'] ?? ''));
+            $label = $abbr !== '' ? $abbr : ($name !== '' ? $name : ('Plateforme ' . $pid));
+            if ($pid <= 0) {
+                $pid = 0;
+                $label = 'Inconnu';
+            }
+            if (!isset($byPlatform[$pid])) {
+                $byPlatform[$pid] = ['label' => $label, 'rows' => []];
+            }
+            $byPlatform[$pid]['rows'][] = $e;
+        }
+
+        // Trie des onglets par label
+        uasort($byPlatform, static function ($a, $b) {
+            return strcmp((string)($a['label'] ?? ''), (string)($b['label'] ?? ''));
+        });
+
+        $spreadsheet = new Spreadsheet();
+        // Retirer la feuille par défaut (on la remplacera)
+        $spreadsheet->removeSheetByIndex(0);
+
+        $usedNames = [];
+        foreach ($byPlatform as $group) {
+            $sheetName = $this->makeExcelSheetName((string)($group['label'] ?? ''), $usedNames);
+            $sheet = $spreadsheet->createSheet();
+            $sheet->setTitle($sheetName);
+
+            // En-têtes (identiques au CSV)
+            $headers = [
+                'ID', 'Jeu', 'Plateforme', 'Région', 'Type', 'Statut', 'Note',
+                'État physique', 'Rang', 'Date acquisition', 'Prix payé (€)',
+                'Temps de jeu (min)', 'Boîte', 'Manuel', 'Date ajout',
+            ];
+            $sheet->fromArray($headers, null, 'A1');
+            $sheet->freezePane('A2');
+
+            $r = 2;
+            foreach (($group['rows'] ?? []) as $e) {
+                $sheet->fromArray([
+                    $e['id'] ?? '',
+                    $e['game']['title']         ?? '',
+                    ($e['platform']['abbreviation'] ?? '') ?: ($e['platform']['name'] ?? ''),
+                    $e['region']                ?? '',
+                    $e['game_type']             ?? '',
+                    $e['status']                ?? '',
+                    $e['review']['rating']      ?? '',
+                    $e['physical_condition']    ?? '',
+                    $e['rank_position']         ?? '',
+                    $e['acquired_at']           ?? '',
+                    $e['price_paid'] !== null   ? number_format((float) $e['price_paid'], 2, '.', '') : '',
+                    $e['play_time_minutes']     ?? '',
+                    $e['has_box']  !== null     ? ($e['has_box']    ? 'Oui' : 'Non') : '',
+                    $e['has_manual'] !== null   ? ($e['has_manual'] ? 'Oui' : 'Non') : '',
+                    $e['created_at']            ?? '',
+                ], null, 'A' . $r);
+                $r++;
+            }
+
+            // Auto-size simple
+            foreach (range('A', 'O') as $col) {
+                $sheet->getColumnDimension($col)->setAutoSize(true);
+            }
+        }
+
+        if ($spreadsheet->getSheetCount() === 0) {
+            // Toujours fournir un fichier valide (même vide)
+            $sheet = $spreadsheet->createSheet();
+            $sheet->setTitle('Collection');
+            $sheet->fromArray(['Aucune entrée'], null, 'A1');
+        } else {
+            $spreadsheet->setActiveSheetIndex(0);
+        }
+
+        $filename = 'collection-par-plateforme-' . date('Y-m-d') . '.xlsx';
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Cache-Control: no-store');
+
+        $writer = new Xlsx($spreadsheet);
+        $writer->save('php://output');
+        exit;
+    }
+
+    /**
+     * Génère un nom de feuille Excel valide (≤31 chars, sans caractères interdits).
+     * Dédoublonne en ajoutant " (2)", " (3)", etc.
+     *
+     * @param array<string,bool> $used
+     */
+    private function makeExcelSheetName(string $label, array &$used): string
+    {
+        $name = trim($label) !== '' ? trim($label) : 'Plateforme';
+        $name = str_replace(['[',']',':','*','?','/','\\'], ' ', $name);
+        $name = preg_replace('/\s+/', ' ', $name) ?? $name;
+        $name = trim($name);
+        if ($name === '') $name = 'Plateforme';
+        // Excel: 31 caractères max
+        if (mb_strlen($name, 'UTF-8') > 31) {
+            $name = mb_substr($name, 0, 31, 'UTF-8');
+        }
+
+        $base = $name;
+        $i = 2;
+        while (isset($used[$name])) {
+            $suffix = " ({$i})";
+            $maxBaseLen = 31 - mb_strlen($suffix, 'UTF-8');
+            $trimmed = $base;
+            if (mb_strlen($trimmed, 'UTF-8') > $maxBaseLen) {
+                $trimmed = mb_substr($trimmed, 0, max(1, $maxBaseLen), 'UTF-8');
+            }
+            $name = $trimmed . $suffix;
+            $i++;
+        }
+        $used[$name] = true;
+        return $name;
     }
 
     // ──────────────────────────────────────────────────────────────────

@@ -1,0 +1,39 @@
+/* ================================================================
+   platform-badges.css — composant unique badges plateformes
+   Variables supportées (injectées inline via PlatformBadgeColors):
+     --pb-bg: background
+     --pb-fg: texte
+     --pb-bd: bordure
+   ================================================================ */
+
+.platform-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .35rem;
+    padding: .25rem .625rem;
+    border-radius: 999px;
+    font-size: .75rem;
+    font-weight: 650;
+    letter-spacing: .02em;
+    white-space: nowrap;
+
+    background: var(--pb-bg, rgba(124, 58, 237, .18));
+    color: var(--pb-fg, var(--accent-3));
+    border: 1px solid var(--pb-bd, rgba(124, 58, 237, .35));
+}
+
+/* Variante compacte (ex: cartes search) */
+.platform-badge--xs {
+    font-size: .6rem;
+    font-weight: 700;
+    padding: 2px 7px;
+}
+
+/* Badge "more" neutre (ex: +3 autres) */
+.platform-badge--more {
+    background: var(--surface-2);
+    color: var(--text-3);
+    border-color: var(--border);
+}
+

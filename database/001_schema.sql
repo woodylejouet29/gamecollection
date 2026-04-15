@@ -77,6 +77,8 @@ CREATE TABLE IF NOT EXISTS games (
     igdb_id         INTEGER      UNIQUE NOT NULL,
     title           VARCHAR(255) NOT NULL,
     slug            VARCHAR(255) UNIQUE NOT NULL,
+    igdb_category   INTEGER      NOT NULL DEFAULT 0,
+    parent_game_igdb_id INTEGER,
     synopsis        TEXT,
     cover_url       TEXT,
     cover_local     TEXT,             -- chemin WebP local

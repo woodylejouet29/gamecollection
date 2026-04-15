@@ -206,7 +206,7 @@ function fmtDate(?string $date): string {
     <div class="container">
         <div class="home-section__header">
             <h2 class="home-section__title">Mieux notés</h2>
-            <a href="/search?year_from=<?= date('Y') ?>&year_to=<?= date('Y') ?>&sort=rating" class="home-section__link">Voir tout →</a>
+            <a href="/search?sort=rating" class="home-section__link">Voir tout →</a>
         </div>
 
         <?php if (!empty($topRatedGames)): ?>
@@ -265,7 +265,7 @@ function fmtDate(?string $date): string {
     <div class="container">
         <div class="home-section__header">
             <h2 class="home-section__title">Ça sort aujourd’hui</h2>
-            <a href="/search?q=&year_from=<?= date('Y') ?>&year_to=<?= date('Y') ?>&sort=upcoming" class="home-section__link">Voir tout →</a>
+            <a href="/search?sort=upcoming" class="home-section__link">Voir tout →</a>
         </div>
 
         <?php if (!empty($todayGames)): ?>

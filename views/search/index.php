@@ -13,6 +13,8 @@
  *   $pageSize      int
  */
 
+use App\Data\GenreTranslations;
+
 // ──────────────────────────────────────────────
 //  Helpers — définis ici, réutilisés par _results.php (function_exists guard)
 // ──────────────────────────────────────────────
@@ -48,7 +50,7 @@ $q = htmlspecialchars($filters['q'] ?? '');
                        type="search"
                        name="q"
                        value="<?= $q ?>"
-                       placeholder="Titre du jeu"
+                       placeholder="Taper le nom du jeu, minimum 3 caractères"
                        aria-label="Recherche de jeux"
                        spellcheck="false">
                 <button class="search-input-wrap__clear" type="button" id="search-clear-btn"
@@ -62,7 +64,21 @@ $q = htmlspecialchars($filters['q'] ?? '');
             </div>
 
             <?php /* Conserver les filtres sidebar dans l'URL lors d'une nouvelle recherche */ ?>
-            <?php foreach (['platform', 'genre', 'year_from', 'year_to', 'rating_min', 'sort'] as $k): ?>
+            <?php if (!empty($filters['platforms']) && is_array($filters['platforms'])): ?>
+                <?php foreach ($filters['platforms'] as $pid): ?>
+                    <?php if (is_numeric($pid) && (int)$pid > 0): ?>
+                        <input type="hidden" name="platform[]" value="<?= (int)$pid ?>">
+                    <?php endif; ?>
+                <?php endforeach; ?>
+            <?php endif; ?>
+            <?php if (!empty($filters['genres']) && is_array($filters['genres'])): ?>
+                <?php foreach ($filters['genres'] as $g): ?>
+                    <?php $g = trim((string)$g); if ($g !== ''): ?>
+                        <input type="hidden" name="genre[]" value="<?= htmlspecialchars($g) ?>">
+                    <?php endif; ?>
+                <?php endforeach; ?>
+            <?php endif; ?>
+            <?php foreach (['rating_min', 'sort'] as $k): ?>
                 <?php if (!empty($filters[$k])): ?>
                     <input type="hidden" name="<?= $k ?>" value="<?= htmlspecialchars((string)$filters[$k]) ?>">
                 <?php endif; ?>
@@ -102,41 +118,85 @@ $q = htmlspecialchars($filters['q'] ?? '');
 
             <div class="search-sidebar__group">
                 <label class="search-sidebar__label" for="f-platform">Plateforme</label>
-                <select class="search-sidebar__select" name="platform" id="f-platform">
-                    <option value="">Toutes les plateformes</option>
-                    <?php foreach ($filterOptions['platforms'] ?? [] as $p): ?>
-                        <option value="<?= (int)$p['id'] ?>"
-                            <?= (int)($filters['platform'] ?? 0) === (int)$p['id'] ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($p['abbreviation'] ?: $p['name']) ?>
-                            <?php if (!empty($p['generation'])): ?>(Gen.<?= (int)$p['generation'] ?>)<?php endif; ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
+                <div class="search-tag-picker" id="platform-picker" data-kind="platform">
+                    <div class="search-tag-picker__tags" id="platform-tags">
+                        <?php
+                            $selectedPlatforms = [];
+                            $pGet = $_GET['platform'] ?? [];
+                            if (is_string($pGet) && $pGet !== '') $pGet = [$pGet];
+                            if (is_numeric($pGet)) $pGet = [(string) $pGet];
+                            if (is_array($pGet)) {
+                                foreach ($pGet as $pv) {
+                                    if (is_numeric($pv)) $selectedPlatforms[] = (int) $pv;
+                                }
+                            }
+                            $selectedPlatforms = array_values(array_unique(array_filter($selectedPlatforms, fn($x) => $x > 0)));
+
+                            $platformLabelMap = [];
+                            foreach (($filterOptions['platforms'] ?? []) as $p) {
+                                $id = (int) ($p['id'] ?? 0);
+                                if ($id <= 0) continue;
+                                $label = trim((string) ($p['abbreviation'] ?: $p['name']));
+                                if (!empty($p['generation'])) {
+                                    $label .= ' (Gen.' . (int) $p['generation'] . ')';
+                                }
+                                $platformLabelMap[$id] = $label;
+                            }
+                        ?>
+                        <?php foreach ($selectedPlatforms as $pid): ?>
+                            <span class="search-tag-picker__tag" data-id="<?= (int)$pid ?>">
+                                <?= htmlspecialchars($platformLabelMap[$pid] ?? ('#' . $pid)) ?>
+                                <button type="button" class="search-tag-picker__remove" aria-label="Retirer cette plateforme" data-remove-tag>&times;</button>
+                                <input type="hidden" name="platform[]" value="<?= (int)$pid ?>">
+                            </span>
+                        <?php endforeach; ?>
+                    </div>
+                    <input class="search-tag-picker__input"
+                           id="f-platform"
+                           type="text"
+                           placeholder="Ajouter une plateforme…"
+                           autocomplete="off"
+                           spellcheck="false"
+                           aria-label="Ajouter une plateforme">
+                    <ul class="search-tag-picker__suggestions" id="platform-suggestions" role="listbox" hidden></ul>
+                </div>
             </div>
 
-            <div class="search-sidebar__group">
+            <div class="search-sidebar__group" id="genre-filter-group" data-conditional-genre>
                 <label class="search-sidebar__label" for="f-genre">Genre</label>
-                <select class="search-sidebar__select" name="genre" id="f-genre">
-                    <option value="">Tous les genres</option>
-                    <?php foreach ($filterOptions['genres'] ?? [] as $g): ?>
-                        <option value="<?= htmlspecialchars($g) ?>"
-                            <?= ($filters['genre'] ?? '') === $g ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($g) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-
-            <div class="search-sidebar__group">
-                <label class="search-sidebar__label">Année de sortie</label>
-                <div class="search-sidebar__range">
-                    <input class="search-sidebar__input" type="number" name="year_from"
-                           placeholder="De" min="1950" max="<?= date('Y') + 3 ?>"
-                           value="<?= htmlspecialchars($filters['year_from'] ?? '') ?>">
-                    <span class="search-sidebar__range-sep">–</span>
-                    <input class="search-sidebar__input" type="number" name="year_to"
-                           placeholder="À" min="1950" max="<?= date('Y') + 3 ?>"
-                           value="<?= htmlspecialchars($filters['year_to'] ?? '') ?>">
+                <div class="search-sidebar__hint" id="genre-filter-hint" hidden>
+                    Choisissez d’abord une plateforme ou tapez au moins 3 caractères dans la recherche.
+                </div>
+                <div class="search-tag-picker" id="genre-picker" data-kind="genre">
+                    <div class="search-tag-picker__tags" id="genre-tags">
+                        <?php
+                            $selectedGenres = [];
+                            $gGet = $_GET['genre'] ?? [];
+                            if (is_string($gGet) && $gGet !== '') $gGet = [$gGet];
+                            if (is_array($gGet)) {
+                                foreach ($gGet as $gv) {
+                                    $gv = trim((string) $gv);
+                                    if ($gv !== '') $selectedGenres[] = $gv;
+                                }
+                            }
+                            $selectedGenres = array_values(array_unique($selectedGenres));
+                        ?>
+                        <?php foreach ($selectedGenres as $g): ?>
+                            <span class="search-tag-picker__tag" data-id="<?= htmlspecialchars($g) ?>">
+                                <?= htmlspecialchars(GenreTranslations::translate($g)) ?>
+                                <button type="button" class="search-tag-picker__remove" aria-label="Retirer ce genre" data-remove-tag>&times;</button>
+                                <input type="hidden" name="genre[]" value="<?= htmlspecialchars($g) ?>">
+                            </span>
+                        <?php endforeach; ?>
+                    </div>
+                    <input class="search-tag-picker__input"
+                           id="f-genre"
+                           type="text"
+                           placeholder="Ajouter un genre…"
+                           autocomplete="off"
+                           spellcheck="false"
+                           aria-label="Ajouter un genre">
+                    <ul class="search-tag-picker__suggestions" id="genre-suggestions" role="listbox" hidden></ul>
                 </div>
             </div>
 
@@ -161,6 +221,35 @@ $q = htmlspecialchars($filters['q'] ?? '');
         </form>
     </aside>
 
+    <?php
+        $pickerData = [
+            'platforms' => array_map(static function ($p) {
+                return [
+                    'id' => (int) ($p['id'] ?? 0),
+                    'name' => (string) ($p['name'] ?? ''),
+                    'abbreviation' => (string) ($p['abbreviation'] ?? ''),
+                    'generation' => isset($p['generation']) ? (int) $p['generation'] : null,
+                ];
+            }, $filterOptions['platforms'] ?? []),
+            // Genres: on conserve l'ID/valeur IGDB (EN) pour les filtres,
+            // et on fournit un label FR pour l'affichage.
+            'genres' => array_values(array_map(static function ($g) {
+                $id = (string) $g;
+                return [
+                    'id' => $id,
+                    'label' => GenreTranslations::translate($id),
+                    'search' => $id . ' ' . GenreTranslations::translate($id),
+                ];
+            }, $filterOptions['genres'] ?? [])),
+        ];
+    ?>
+    <?php
+        $pickerJson = json_encode($pickerData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        // Empêche une fermeture prématurée du <script> si jamais une valeur contenait "</script".
+        $pickerJson = str_replace('</', '<\/', (string) $pickerJson);
+    ?>
+    <script type="application/json" id="search-filter-data"><?= $pickerJson ?></script>
+
     <?php /* ─────────────────────────────────────── ZONE RÉSULTATS (remplacée par AJAX) */ ?>
     <section class="search-content">
         <div id="search-results-area">
@@ -177,8 +266,34 @@ $q = htmlspecialchars($filters['q'] ?? '');
         <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/>
     </svg>
     Filtres
-    <?php if (!empty($activeFilters)): ?>
-        <span class="search-filters-fab__badge"><?= count($activeFilters) ?></span>
+    <?php
+        // Badge mobile: uniquement les *vrais* filtres de la sidebar (pas q/sort/page/cursor…)
+        $fabCount = 0;
+
+        $platformVals = $_GET['platform'] ?? $_GET['platform[]'] ?? [];
+        if (is_string($platformVals) && $platformVals !== '') $platformVals = [$platformVals];
+        if (is_numeric($platformVals)) $platformVals = [(string) $platformVals];
+        if (is_array($platformVals)) {
+            $platformVals = array_values(array_filter(array_map('intval', $platformVals), fn($x) => $x > 0));
+        } else {
+            $platformVals = [];
+        }
+        if (!empty($platformVals)) $fabCount += 1;
+
+        $genreVals = $_GET['genre'] ?? $_GET['genre[]'] ?? [];
+        if (is_string($genreVals) && trim($genreVals) !== '') $genreVals = [$genreVals];
+        if (is_array($genreVals)) {
+            $genreVals = array_values(array_filter(array_map(static fn($g) => trim((string)$g), $genreVals), fn($g) => $g !== ''));
+        } else {
+            $genreVals = [];
+        }
+        if (!empty($genreVals)) $fabCount += 1;
+
+        $ratingMin = (int)($_GET['rating_min'] ?? 0);
+        if ($ratingMin > 0) $fabCount += 1;
+    ?>
+    <?php if ($fabCount > 0): ?>
+        <span class="search-filters-fab__badge"><?= (int) $fabCount ?></span>
     <?php endif; ?>
 </button>
 

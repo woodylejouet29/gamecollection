@@ -342,6 +342,93 @@ class CollectionListService
         return array_map([$this, 'normalizeEntry'], $body);
     }
 
+    /**
+     * Export filtré (mêmes filtres que /collection), sans pagination UI.
+     * Récupère les entrées par batch pour éviter les timeouts.
+     *
+     * @return list<array>
+     */
+    public function exportFiltered(string $userId, array $filters = []): array
+    {
+        $params = ['user_id' => 'eq.' . $userId];
+
+        // Preset "liste" (s'applique en premier, peut être écrasé par les filtres manuels)
+        $listKey = $filters['list'] ?? 'all';
+        $listPreset = self::LIST_FILTERS[$listKey] ?? [];
+        foreach ($listPreset as $k => $v) {
+            $params[$k] = $v;
+        }
+
+        // Filtres manuels (même logique que getEntries())
+        if (!empty($filters['platform'])) {
+            $params['platform_id'] = 'eq.' . (int) $filters['platform'];
+        }
+        if (!empty($filters['status']) && empty($listPreset['status'])) {
+            $params['status'] = 'eq.' . $filters['status'];
+        }
+        if (!empty($filters['game_type']) && empty($listPreset['game_type'])) {
+            $params['game_type'] = 'eq.' . $filters['game_type'];
+        }
+        if (!empty($filters['region'])) {
+            $params['region'] = 'eq.' . $filters['region'];
+        }
+        if (!empty($filters['condition'])) {
+            $params['physical_condition'] = 'eq.' . $filters['condition'];
+        }
+
+        $sort = self::SORT_MAP[$filters['sort'] ?? 'recent'] ?? 'created_at.desc';
+
+        // Export: cap pour éviter explosions (aligné avec exportAll)
+        $maxRows = 5000;
+        $batch   = 1000;
+        $offset  = 0;
+
+        $out = [];
+
+        do {
+            $url = $this->buildUrl('/rest/v1/collection_entries', array_merge($params, [
+                'select' => self::SELECT_ENTRIES,
+                'order'  => $sort,
+                'limit'  => (string) $batch,
+                'offset' => (string) $offset,
+            ]));
+
+            try {
+                $res  = $this->http->get($url, ['headers' => $this->headers()]);
+                $raw  = (string) $res->getBody();
+                $rows = json_decode($raw, true, 512, JSON_INVALID_UTF8_SUBSTITUTE);
+                $rows = is_array($rows) ? $rows : [];
+            } catch (Throwable) {
+                $rows = [];
+            }
+
+            if (empty($rows)) {
+                break;
+            }
+
+            // Filtrage titre côté PHP (comme getEntries)
+            if (!empty($filters['q'])) {
+                $q = mb_strtolower(trim((string) $filters['q']));
+                $rows = array_values(array_filter($rows, function ($e) use ($q) {
+                    $title = mb_strtolower((string) ($e['games']['title'] ?? ''));
+                    return $q === '' ? true : str_contains($title, $q);
+                }));
+            }
+
+            foreach ($rows as $row) {
+                if (!is_array($row)) continue;
+                $out[] = $this->normalizeEntry($row);
+                if (count($out) >= $maxRows) {
+                    break 2;
+                }
+            }
+
+            $offset += $batch;
+        } while (true);
+
+        return $out;
+    }
+
     // ──────────────────────────────────────────────────────────────────
     //  Helpers privés
     // ──────────────────────────────────────────────────────────────────

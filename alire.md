@@ -41,3 +41,7 @@ Légal : non, les pages seront à faire plus tard
 Copyright : oui
 Crédibilité : oui
 Mobile : a toi de voir ce qui est le plus pratique
+
+Il faudrait un système complet pour :
+
+- Traduire les genres (par exemple Adventure > Aventure, Racing > Course)

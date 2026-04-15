@@ -12,17 +12,72 @@ class SearchController
 {
     public function index(): void
     {
+        // Canonicalisation URL : on a retiré les filtres par année et le tri "oldest".
+        // Si quelqu'un arrive avec une ancienne URL partagée, on nettoie et on redirige.
+        if (!empty($_GET)) {
+            $needsCleanup = array_key_exists('year_from', $_GET)
+                || array_key_exists('year_to', $_GET)
+                || (isset($_GET['sort']) && $_GET['sort'] === 'oldest');
+
+            if ($needsCleanup) {
+                $params = $_GET;
+                unset($params['year_from'], $params['year_to']);
+
+                if (($params['sort'] ?? null) === 'oldest') {
+                    unset($params['sort']); // retombe sur le défaut "recent"
+                }
+
+                // Ces paramètres dépendent des filtres/résultats, on les retire pour éviter incohérences.
+                unset($params['cursor'], $params['page']);
+
+                $qs  = http_build_query($params);
+                $url = '/search' . ($qs !== '' ? ('?' . $qs) : '');
+
+                header('Location: ' . $url, true, 302);
+                exit;
+            }
+        }
+
         $service = new SearchService();
 
         // Lecture des filtres depuis $_GET
+        $platforms = [];
+        $platformGet = $_GET['platform'] ?? [];
+        if (is_numeric($platformGet)) {
+            $platformGet = [(string) $platformGet];
+        } elseif (is_string($platformGet) && $platformGet !== '') {
+            $platformGet = [$platformGet];
+        }
+        if (is_array($platformGet)) {
+            foreach ($platformGet as $pv) {
+                if (is_numeric($pv)) {
+                    $platforms[] = (int) $pv;
+                }
+            }
+        }
+        $platforms = array_values(array_unique(array_filter($platforms, static fn($x) => $x > 0)));
+
+        $genres = [];
+        $genreGet = $_GET['genre'] ?? [];
+        if (is_string($genreGet) && $genreGet !== '') {
+            $genreGet = [$genreGet];
+        }
+        if (is_array($genreGet)) {
+            foreach ($genreGet as $gv) {
+                $gv = trim((string) $gv);
+                if ($gv !== '') {
+                    $genres[] = $gv;
+                }
+            }
+        }
+        $genres = array_values(array_unique($genres));
+
         $filters = [
             'q'          => trim($_GET['q']          ?? ''),
-            'platform'   => (int) ($_GET['platform'] ?? 0) ?: 0,
-            'genre'      => trim($_GET['genre']       ?? ''),
-            'year_from'  => trim($_GET['year_from']   ?? ''),
-            'year_to'    => trim($_GET['year_to']     ?? ''),
+            'platforms'  => $platforms,
+            'genres'     => $genres,
             'rating_min' => (int) ($_GET['rating_min'] ?? 0),
-            'sort'       => in_array($_GET['sort'] ?? '', ['recent', 'upcoming', 'oldest', 'rating', 'title_asc', 'title_desc'], true)
+            'sort'       => in_array($_GET['sort'] ?? '', ['recent', 'upcoming', 'rating'], true)
                                 ? $_GET['sort']
                                 : 'recent',
         ];
@@ -38,12 +93,15 @@ class SearchController
 
         if ($isAjax) {
             // Requête AJAX : seulement la recherche (options déjà dans le DOM)
-            $result = $service->searchCursor($filters, $cursor !== '' ? $cursor : null, $perPage);
+            // Perf: en AJAX on ne calcule pas le total (count=none) pour accélérer.
+            $result = $service->searchCursor($filters, $cursor !== '' ? $cursor : null, $perPage, 'none');
             if (!is_array($result)) {
                 $result = [];
             }
             $games = is_array($result['games'] ?? null) ? $result['games'] : [];
             $total = (int) ($result['total'] ?? 0);
+            $hadError = !empty($result['_error']);
+            $countMode = (string) ($result['_count_mode'] ?? 'none');
             $platformMap = $this->platformMap($service);
 
             header('Content-Type: text/html; charset=utf-8');
@@ -58,6 +116,8 @@ class SearchController
                 'baseUrl'      => $baseUrl,
                 'nextCursor'   => $result['next_cursor'] ?? null,
                 'pageSize'     => $perPage,
+                'error'        => $hadError,
+                'countMode'    => $countMode,
             ]);
             return;
         }
@@ -82,6 +142,8 @@ class SearchController
         }
         $games = is_array($result['games'] ?? null) ? $result['games'] : [];
         $total = (int) ($result['total'] ?? 0);
+        $hadError = !empty($result['_error']);
+        $countMode = (string) ($result['_count_mode'] ?? 'estimated');
 
         $pageTitle = $filters['q'] !== ''
             ? 'Recherche : ' . htmlspecialchars($filters['q'])
@@ -96,10 +158,17 @@ class SearchController
             'filters'       => $filters,
             'filterOptions' => $options,
             'platformMap'   => $platformMap,
-            'activeFilters' => array_filter($filters, static fn($v) => $v !== '' && $v !== 0),
+            'activeFilters' => array_filter($filters, static function ($v): bool {
+                if (is_array($v)) {
+                    return !empty($v);
+                }
+                return $v !== '' && $v !== 0;
+            }),
             'baseUrl'       => $baseUrl,
             'nextCursor'    => $result['next_cursor'] ?? null,
             'pageSize'      => $perPage,
+            'error'         => $hadError,
+            'countMode'     => $countMode,
             // Important: `search.js` dépend de fonctions globales définies dans `app.js` (cookies + view toggle).
             // On l'injecte donc après `app.js` via le slot `$foot` du layout.
             'foot'          => '<script>window.SEARCH_CONFIG={gameUrl:"/api/games/",suggestUrl:"/api/games/search"};</script>'
@@ -119,6 +188,21 @@ class SearchController
             if ($v === '' || $v === 0 || $v === '0' || $v === null) {
                 continue;
             }
+            // Important: l'UI envoie `platform[]` et `genre[]` (pas `platforms[]/genres[]`).
+            // On encode donc l'URL de base avec ces clés pour que la pagination conserve bien les filtres.
+            if ($k === 'platforms') {
+                if (is_array($v) && !empty($v)) {
+                    $params['platform'] = array_values($v); // devient platform[0]=... via http_build_query
+                }
+                continue;
+            }
+            if ($k === 'genres') {
+                if (is_array($v) && !empty($v)) {
+                    $params['genre'] = array_values($v); // devient genre[0]=...
+                }
+                continue;
+            }
+
             $params[$k] = $v;
         }
         $qs = http_build_query($params);
@@ -142,8 +226,17 @@ class SearchController
                 $fullName = trim((string) ($p['name'] ?? ''));
                 $label = PlatformAbbreviations::get($fullName);
             }
+            $slug = trim((string) ($p['slug'] ?? ''));
+            $name = trim((string) ($p['name'] ?? ''));
+            $abbr = trim((string) ($p['abbreviation'] ?? ''));
+
             if ($label !== '') {
-                $map[$id] = $label;
+                $map[$id] = [
+                    'label' => $label,
+                    'slug'  => $slug,
+                    'name'  => $name,
+                    'abbreviation' => $abbr,
+                ];
             }
         }
         return $map;

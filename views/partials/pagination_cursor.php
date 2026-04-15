@@ -8,6 +8,7 @@
  *   $pageSize    int
  *   $gamesCount  int
  *   $totalResults int
+ *   $countMode   string  'estimated' | 'none'
  */
 
 $baseUrl      = $baseUrl      ?? '/search';
@@ -15,6 +16,7 @@ $nextCursor   = $nextCursor   ?? null;
 $pageSize     = (int) ($pageSize ?? 24);
 $gamesCount   = (int) ($gamesCount ?? 0);
 $totalResults = (int) ($totalResults ?? 0);
+$countMode    = (string) ($countMode ?? ($countModeForPager ?? 'estimated'));
 
 if ($gamesCount <= 0) {
     return;
@@ -50,7 +52,11 @@ $hasNext = $nextCursor !== null && $gamesCount >= $pageSize;
     <?php endif; ?>
 
     <p class="pagination__info">
-        <?= $totalResults > 0 ? ('Résultats (estimé) : ' . number_format($totalResults)) : 'Résultats' ?>
+        <?php if ($countMode === 'none'): ?>
+            <?= 'Résultats : ' . number_format($gamesCount) . '+' ?>
+        <?php else: ?>
+            <?= $totalResults > 0 ? ('Résultats (estimé) : ' . number_format($totalResults)) : 'Résultats' ?>
+        <?php endif; ?>
     </p>
 </nav>
 

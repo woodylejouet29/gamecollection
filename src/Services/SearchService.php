@@ -22,6 +22,7 @@ use Throwable;
 class SearchService
 {
     private const RESULTS_CACHE_VERSION = 5;
+    private const FILTER_PLATFORMS_CACHE_KEY = 'filter_platforms_v2';
 
     private Client $http;
     private string $supabaseUrl;
@@ -49,8 +50,7 @@ class SearchService
      * Recherche paginée avec filtres.
      * Résultats mis en cache 5 min par combinaison de paramètres.
      *
-     * @param  array{q?:string, platform?:int, genre?:string, year_from?:string,
-     *                year_to?:string, rating_min?:int, sort?:string} $filters
+     * @param  array{q?:string, platform?:int, genre?:string, rating_min?:int, sort?:string} $filters
      * @return array{games: array, total: int}
      */
     public function search(array $filters, int $page = 1, int $perPage = 24): array
@@ -72,7 +72,7 @@ class SearchService
      *
      * @return array{games: array, total: int, next_cursor: ?string}
      */
-    public function searchCursor(array $filters, ?string $cursor = null, int $perPage = 24): array
+    public function searchCursor(array $filters, ?string $cursor = null, int $perPage = 24, string $countMode = 'estimated'): array
     {
         $cacheKey = 'results/' . md5(json_encode([
             'v'      => self::RESULTS_CACHE_VERSION,
@@ -80,9 +80,10 @@ class SearchService
             'f'      => $filters,
             'cursor' => $cursor,
             'pp'     => $perPage,
+            'count'  => $countMode,
         ]));
 
-        return $this->cached($cacheKey, fn() => $this->doSearchCursor($filters, $cursor, $perPage), 300);
+        return $this->cached($cacheKey, fn() => $this->doSearchCursor($filters, $cursor, $perPage, $countMode), 300);
     }
 
     /** Exécute la requête Supabase réelle (appelé uniquement si le cache est froid). */
@@ -91,11 +92,36 @@ class SearchService
         $promise = $this->buildSearchPromiseOffset($filters, $page, $perPage);
         try {
             $response = $promise->wait();
-        } catch (Throwable) {
-            return ['games' => [], 'total' => 0];
+        } catch (Throwable $e) {
+            Logger::warning('Supabase search request failed', [
+                'mode' => 'offset',
+                'filters' => $filters,
+                'page' => $page,
+                'per_page' => $perPage,
+                'exception' => get_class($e) . ': ' . $e->getMessage(),
+            ]);
+            return ['games' => [], 'total' => 0, '_error' => true];
         }
 
-        return $this->processCountResponse($response);
+        $result = $this->processCountResponse($response);
+        // Retry 1x sur vide "suspect" (souvent lié à un hic réseau/proxy)
+        if ($this->shouldRetryEmptyResult($filters, $result)) {
+            usleep(150000); // 150ms
+            try {
+                // Fallback: réduire la page pour diminuer la charge côté Supabase
+                $retryPerPage = min($perPage, 12);
+                // Et ne pas recalculer le total (count) : souvent la partie la plus coûteuse.
+                $response2 = $this->buildSearchPromiseOffset($filters, $page, $retryPerPage, 'none')->wait();
+                $result2 = $this->processCountResponse($response2);
+                if (!empty($result2['games']) || (int)($result2['total'] ?? 0) > 0 || !empty($result2['_error'])) {
+                    return $result2;
+                }
+            } catch (Throwable) {
+                // Laisser le 1er résultat (vide) : on ne veut pas boucler.
+            }
+        }
+
+        return $result;
     }
 
     /**
@@ -103,16 +129,42 @@ class SearchService
      *
      * @return array{games: array, total: int, next_cursor: ?string}
      */
-    private function doSearchCursor(array $filters, ?string $cursor, int $perPage): array
+    private function doSearchCursor(array $filters, ?string $cursor, int $perPage, string $countMode): array
     {
-        $promise = $this->buildSearchPromiseCursor($filters, $cursor, $perPage);
+        $promise = $this->buildSearchPromiseCursor($filters, $cursor, $perPage, $countMode);
         try {
             $response = $promise->wait();
-        } catch (Throwable) {
-            return ['games' => [], 'total' => 0, 'next_cursor' => null];
+        } catch (Throwable $e) {
+            Logger::warning('Supabase search request failed', [
+                'mode' => 'cursor',
+                'filters' => $filters,
+                'cursor' => $cursor,
+                'per_page' => $perPage,
+                'exception' => get_class($e) . ': ' . $e->getMessage(),
+            ]);
+            return ['games' => [], 'total' => 0, 'next_cursor' => null, '_error' => true];
         }
 
         $result = $this->processCountResponse($response);
+
+        // Retry 1x sur vide "suspect" (souvent sur certains filtres plateformes).
+        if ($this->shouldRetryEmptyResult($filters, $result) && ($cursor === null || $cursor === '')) {
+            usleep(150000); // 150ms
+            try {
+                // Fallback: réduire la page pour diminuer la charge côté Supabase
+                $retryPerPage = min($perPage, 12);
+                // Et ne pas recalculer le total (count) : souvent la partie la plus coûteuse.
+                $response2 = $this->buildSearchPromiseCursor($filters, $cursor, $retryPerPage, 'none')->wait();
+                $result2 = $this->processCountResponse($response2);
+                if (!empty($result2['games']) || (int)($result2['total'] ?? 0) > 0 || !empty($result2['_error'])) {
+                    $result = $result2;
+                    $countMode = 'none';
+                }
+            } catch (Throwable) {
+                // Ne pas boucler. On garde $result.
+            }
+        }
+
         $games  = $result['games'] ?? [];
 
         $next = null;
@@ -127,7 +179,37 @@ class SearchService
             'games'       => is_array($games) ? $games : [],
             'total'       => (int) ($result['total'] ?? 0),
             'next_cursor' => $next,
+            '_error'      => !empty($result['_error']),
+            '_count_mode' => $countMode,
         ];
+    }
+
+    /**
+     * Détecte un "vide suspect" : pas d'erreur, mais 0 résultat alors qu'on a des filtres.
+     * Sur certains timeouts/proxys, on reçoit une réponse 200 vide; un retry suffit souvent.
+     */
+    private function shouldRetryEmptyResult(array $filters, array $result): bool
+    {
+        if (!empty($result['_error'])) {
+            return false;
+        }
+        $games = $result['games'] ?? null;
+        $total = (int) ($result['total'] ?? 0);
+        $isEmpty = $total === 0 && (!is_array($games) || empty($games));
+        if (!$isEmpty) {
+            return false;
+        }
+
+        // On ne retry que si l'utilisateur a demandé quelque chose de "spécifique".
+        $platforms = $filters['platforms'] ?? [];
+        $genres    = $filters['genres'] ?? [];
+        $q         = trim((string) ($filters['q'] ?? ''));
+        $ratingMin = (int) ($filters['rating_min'] ?? 0);
+
+        return (is_array($platforms) && !empty($platforms))
+            || (is_array($genres) && !empty($genres))
+            || ($q !== '' && mb_strlen($q, 'UTF-8') >= 2)
+            || ($ratingMin > 0);
     }
 
     private function base64UrlEncode(string $raw): string
@@ -163,12 +245,6 @@ class SearchService
             case 'rating':
                 $payload['r'] = isset($row['igdb_rating']) ? (float) $row['igdb_rating'] : null;
                 if ($payload['r'] === null) return null;
-                break;
-            case 'title_asc':
-            case 'title_desc':
-                $t = (string) ($row['title'] ?? '');
-                if ($t === '') return null;
-                $payload['t'] = $t;
                 break;
             case 'upcoming':
             case 'oldest':
@@ -228,22 +304,6 @@ class SearchService
                       . ')'
                     : ''
             ),
-            'title_asc' => (
-                isset($data['t']) && is_string($data['t']) && $data['t'] !== ''
-                    ? '&or=('
-                      . 'title.gt.' . rawurlencode($data['t'])
-                      . ',and(title.eq.' . rawurlencode($data['t']) . ',id.lt.' . $id . ')'
-                      . ')'
-                    : ''
-            ),
-            'title_desc' => (
-                isset($data['t']) && is_string($data['t']) && $data['t'] !== ''
-                    ? '&or=('
-                      . 'title.lt.' . rawurlencode($data['t'])
-                      . ',and(title.eq.' . rawurlencode($data['t']) . ',id.lt.' . $id . ')'
-                      . ')'
-                    : ''
-            ),
             'recent' => (
                 isset($data['d']) && is_string($data['d']) && $data['d'] !== ''
                     ? '&release_date=not.is.null'
@@ -265,32 +325,75 @@ class SearchService
         };
     }
 
+    /** Construit une expression OR interne (sans "or=(...)" et sans "&") pour les genres. */
+    private function buildGenresOrExpr(array $genres): ?string
+    {
+        $names = [];
+        foreach ($genres as $g) {
+            $g = trim((string) $g);
+            if ($g !== '') $names[] = $g;
+        }
+        $names = array_values(array_unique($names));
+        if (count($names) < 2) {
+            return null;
+        }
+
+        $parts = [];
+        foreach ($names as $g) {
+            $genreJson = json_encode([['name' => $g]], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            $parts[] = 'genres.cs.' . rawurlencode($genreJson);
+        }
+        return implode(',', $parts);
+    }
+
+    /** Construit le querystring de filtre genres (sans gérer le cursor). */
+    private function buildGenresFilterQs(array $genres): string
+    {
+        $names = [];
+        foreach ($genres as $g) {
+            $g = trim((string) $g);
+            if ($g !== '') $names[] = $g;
+        }
+        $names = array_values(array_unique($names));
+        if (empty($names)) {
+            return '';
+        }
+
+        if (count($names) === 1) {
+            $genreJson = rawurlencode(json_encode([['name' => $names[0]]], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            return "&genres=cs.{$genreJson}";
+        }
+
+        $orExpr = $this->buildGenresOrExpr($names);
+        return $orExpr ? ('&or=(' . $orExpr . ')') : '';
+    }
+
     /**
      * Masquer les DLC/Extensions dans la recherche.
      *
-     * Important: PostgREST ne supporte pas toujours les chemins JSON (`->`/`->>`) dans les arbres logiques `or/and`.
-     * On utilise donc `jsonb contains` (@>) via `cs.` et on nie la condition :
-     *   raw_igdb_data NOT @> {"category": X}
-     *
-     * IGDB category: 1=dlc_addon, 2=expansion, 4=standalone_expansion.
+     * On ne stocke plus le payload IGDB complet (`raw_igdb_data`) en base, pour éviter l'explosion TOAST.
+     * On filtre donc via des colonnes dédiées (légères) :
+     *  - parent_game_igdb_id IS NULL  → exclut DLC/expansions liés à un parent
+     *  - igdb_category NOT IN (...)   → second filet de sécurité
      */
     private function buildNonDlcFilters(): string
     {
-        $field = 'raw_igdb_data';
-        $mk = static fn(int $cat): string => rawurlencode(json_encode(['category' => $cat], JSON_UNESCAPED_SLASHES));
-
-        // AND logique: un jeu est gardé s'il n'est dans AUCUNE de ces catégories.
-        return '&' . $field . '=not.cs.' . $mk(1)
-             . '&' . $field . '=not.cs.' . $mk(2)
-             . '&' . $field . '=not.cs.' . $mk(4);
+        // On garde uniquement les jeux sans parent, et on exclut quelques catégories "non-main".
+        // IGDB category: 0=main_game, 1=dlc_addon, 2=expansion, 4=standalone_expansion, 13=pack.
+        return '&parent_game_igdb_id=is.null'
+            . '&igdb_category=not.in.(1,2,4,13)';
     }
 
     /** Construit la promesse Guzzle pour la recherche (OFFSET, legacy). */
-    private function buildSearchPromiseOffset(array $filters, int $page, int $perPage): \GuzzleHttp\Promise\PromiseInterface
+    private function buildSearchPromiseOffset(
+        array $filters,
+        int $page,
+        int $perPage,
+        string $countMode = 'estimated'
+    ): \GuzzleHttp\Promise\PromiseInterface
     {
-        // On inclut raw_igdb_data pour filtrer les DLC côté PHP de façon fiable
-        // (même si raw_igdb_data a été stocké en JSONB "string" pour certains enregistrements historiques).
-        $select = 'id,title,slug,cover_url,igdb_rating,release_date,genres,developer,platform_ids,raw_igdb_data';
+        // Champs légers requis (on ne ramène plus raw_igdb_data).
+        $select = 'id,title,slug,cover_url,igdb_rating,release_date,genres,developer,platform_ids,igdb_category,parent_game_igdb_id';
 
         // IMPORTANT PERF: le filtre plateforme via jointure `game_platforms!inner(...)` peut time-out
         // sur certaines plateformes. On privilégie `games.platform_ids int[]` (migration 005),
@@ -299,21 +402,35 @@ class SearchService
         $offset = max(0, ($page - 1) * $perPage);
         $rangeEnd = $offset + max(0, $perPage - 1);
         $qs     = $this->buildFilters($filters)
+                . $this->buildGenresFilterQs($filters['genres'] ?? [])
                 . $this->buildNonDlcFilters()
                 . '&order=' . $this->resolveOrder($filters['sort'] ?? '')
                 . "&limit={$perPage}&offset={$offset}";
 
         $url = $this->supabaseUrl . '/rest/v1/games?select=' . $select . $qs;
 
-        return $this->http->getAsync($url, [
+        $hasGenres = !empty($filters['genres']) && is_array($filters['genres']);
+        $hasPlatforms = !empty($filters['platforms']) && is_array($filters['platforms']);
+        // Le filtre JSONB genres sans index GIN peut être lent.
+        // Certaines plateformes peuvent aussi déclencher des réponses "dégradées" sous charge.
+        $timeout = $hasGenres ? 25 : ($hasPlatforms ? 15 : 8);
+
+        $headers = $this->headers();
+        if ($countMode === 'none') {
+            $headers['Prefer'] = 'count=none';
+            // Pas besoin de Range si on ne demande pas le total.
+        } else {
             // `planned` peut devenir très lent sur de gros volumes.
             // `estimated` privilégie la rapidité (au prix d'un total moins précis).
-            'headers' => array_merge($this->headers(), [
-                'Prefer' => 'count=estimated',
-                // Force PostgREST à renvoyer Content-Range (utile pour $total).
-                'Range-Unit' => 'items',
-                'Range'      => "{$offset}-{$rangeEnd}",
-            ]),
+            $headers['Prefer'] = 'count=estimated';
+            // Force PostgREST à renvoyer Content-Range (utile pour $total).
+            $headers['Range-Unit'] = 'items';
+            $headers['Range']      = "{$offset}-{$rangeEnd}";
+        }
+
+        return $this->http->getAsync($url, [
+            'headers' => $headers,
+            'timeout' => $timeout,
         ]);
     }
 
@@ -331,32 +448,77 @@ class SearchService
     }
 
     /** Construit la promesse Guzzle pour la recherche (CURSOR/keyset). */
-    private function buildSearchPromiseCursor(array $filters, ?string $cursor, int $perPage): \GuzzleHttp\Promise\PromiseInterface
+    private function buildSearchPromiseCursor(
+        array $filters,
+        ?string $cursor,
+        int $perPage,
+        string $countMode = 'estimated'
+    ): \GuzzleHttp\Promise\PromiseInterface
     {
-        $select = 'id,title,slug,cover_url,igdb_rating,release_date,genres,developer,platform_ids,raw_igdb_data';
+        $select = 'id,title,slug,cover_url,igdb_rating,release_date,genres,developer,platform_ids,igdb_category,parent_game_igdb_id';
 
         $sort = (string) ($filters['sort'] ?? '');
         $order = $this->resolveOrder($sort);
 
         $cursorFilter = $this->buildCursorFilter($sort, $cursor);
+        $genres = $filters['genres'] ?? [];
+        $genresOr = $this->buildGenresOrExpr(is_array($genres) ? $genres : []);
+        $genresQs = $this->buildGenresFilterQs(is_array($genres) ? $genres : []);
 
-        $qs = $this->buildFilters($filters)
-            . $this->buildNonDlcFilters()
-            . $cursorFilter
-            . '&order=' . $order
-            . "&limit={$perPage}";
+        // Si on a un cursor (donc déjà un `or=(...)`) ET plusieurs genres (donc besoin d'un autre OR),
+        // on doit combiner via `and=(or(...cursor...),or(...genres...))`.
+        if ($genresOr !== null && $cursorFilter !== '' && str_contains($cursorFilter, '&or=(')) {
+            // Extraire le contenu de or=(...) du cursorFilter (format connu).
+            $cursorExpr = '';
+            $p = strpos($cursorFilter, '&or=(');
+            if ($p !== false) {
+                $cursorExpr = substr($cursorFilter, $p + 5); // retire "&or=("
+                if (str_ends_with($cursorExpr, ')')) {
+                    $cursorExpr = substr($cursorExpr, 0, -1);
+                }
+            }
+            // Garder les pré-filtres (&release_date=not.is.null ou &igdb_rating=not.is.null), retirer le &or=(...) du cursorFilter.
+            $cursorPrefix = $p !== false ? substr($cursorFilter, 0, $p) : $cursorFilter;
+
+            $qs = $this->buildFilters($filters)
+                . $this->buildNonDlcFilters()
+                . $cursorPrefix
+                . '&and=('
+                . 'or(' . $cursorExpr . ')'
+                . ',or(' . $genresOr . ')'
+                . ')'
+                . '&order=' . $order
+                . "&limit={$perPage}";
+        } else {
+            $qs = $this->buildFilters($filters)
+                . $genresQs
+                . $this->buildNonDlcFilters()
+                . $cursorFilter
+                . '&order=' . $order
+                . "&limit={$perPage}";
+        }
 
         // Range 0..perPage-1 : suffit pour Content-Range + total estimé, sans OFFSET.
         $rangeEnd = max(0, $perPage - 1);
 
         $url = $this->supabaseUrl . '/rest/v1/games?select=' . $select . $qs;
 
+        $hasGenres = !empty($filters['genres']) && is_array($filters['genres']);
+        $hasPlatforms = !empty($filters['platforms']) && is_array($filters['platforms']);
+        $timeout = $hasGenres ? 25 : ($hasPlatforms ? 15 : 8);
+
+        $headers = $this->headers();
+        if ($countMode === 'none') {
+            $headers['Prefer'] = 'count=none';
+        } else {
+            $headers['Prefer'] = 'count=estimated';
+            $headers['Range-Unit'] = 'items';
+            $headers['Range']      = "0-{$rangeEnd}";
+        }
+
         return $this->http->getAsync($url, [
-            'headers' => array_merge($this->headers(), [
-                'Prefer' => 'count=estimated',
-                'Range-Unit' => 'items',
-                'Range' => "0-{$rangeEnd}",
-            ]),
+            'headers' => $headers,
+            'timeout' => $timeout,
         ]);
     }
 
@@ -365,7 +527,7 @@ class SearchService
     private function processCountResponse(?object $response): array
     {
         if ($response === null) {
-            return ['games' => [], 'total' => 0];
+            return ['games' => [], 'total' => 0, '_error' => true];
         }
 
         $body = $response->getBody();
@@ -386,6 +548,16 @@ class SearchService
             $raw = (string) $body;
         }
 
+        // Un body vide avec une réponse HTTP "OK" arrive parfois en cas de timeout/proxy.
+        // On le traite comme une erreur temporaire, pour éviter un faux "Aucun résultat".
+        if (trim($raw) === '') {
+            Logger::error('Supabase search empty body', [
+                'status' => method_exists($response, 'getStatusCode') ? (int) $response->getStatusCode() : null,
+                'content_range' => method_exists($response, 'getHeaderLine') ? $response->getHeaderLine('Content-Range') : null,
+            ]);
+            return ['games' => [], 'total' => 0, '_error' => true];
+        }
+
         if (method_exists($response, 'getStatusCode')) {
             $code = (int) $response->getStatusCode();
             if ($code >= 400) {
@@ -394,10 +566,19 @@ class SearchService
                     'content_range' => method_exists($response, 'getHeaderLine') ? $response->getHeaderLine('Content-Range') : null,
                     'body' => mb_substr($raw, 0, 800),
                 ]);
+                // On signale une erreur applicative (pour ne pas afficher un faux "0 résultat").
+                return ['games' => [], 'total' => 0, '_error' => true];
             }
         }
 
         $data  = json_decode($raw, true, 512, JSON_INVALID_UTF8_SUBSTITUTE);
+        if ($data === null && trim($raw) !== '' && json_last_error() !== JSON_ERROR_NONE) {
+            Logger::error('Supabase search JSON decode error', [
+                'json_error' => json_last_error_msg(),
+                'body' => mb_substr($raw, 0, 800),
+            ]);
+            return ['games' => [], 'total' => 0, '_error' => true];
+        }
         $range = $response->getHeaderLine('Content-Range');
 
         $total = 0;
@@ -407,6 +588,16 @@ class SearchService
 
         $games = is_array($data) ? $data : [];
         $games = $this->filterOutDlcGames($games);
+
+        // Si on n'a aucun Content-Range ET aucune donnée, c'est très souvent une réponse "dégradée"
+        // (proxy/timeout). On préfère afficher une erreur temporaire plutôt qu'un faux "Aucun résultat".
+        if ($range === '' && empty($games)) {
+            Logger::error('Supabase search missing Content-Range', [
+                'status' => method_exists($response, 'getStatusCode') ? (int) $response->getStatusCode() : null,
+                'body' => mb_substr($raw, 0, 200),
+            ]);
+            return ['games' => [], 'total' => 0, '_error' => true];
+        }
 
         return ['games' => $games, 'total' => $total];
     }
@@ -427,26 +618,13 @@ class SearchService
                 continue;
             }
 
-            $raw = $g['raw_igdb_data'] ?? null;
-            if (is_string($raw)) {
-                $decoded = json_decode($raw, true, 512, JSON_INVALID_UTF8_SUBSTITUTE);
-                $raw = is_array($decoded) ? $decoded : null;
-            }
-
-            $cat = null;
-            if (is_array($raw) && array_key_exists('category', $raw)) {
-                $cat = is_numeric($raw['category']) ? (int) $raw['category'] : null;
-            }
-
-            // Filtre principal : IGDB lie les DLC à un jeu via `parent_game`.
-            // Exemple: "Starfield: Shattered Space" a parent_game=96437.
-            if (is_array($raw) && array_key_exists('parent_game', $raw) && $raw['parent_game'] !== null) {
+            $parent = $g['parent_game_igdb_id'] ?? null;
+            if (is_numeric($parent) && (int) $parent > 0) {
                 continue;
             }
 
-            // Filtre secondaire (si jamais category est présent).
-            // IGDB category: 1=dlc_addon, 2=expansion, 4=standalone_expansion, 13=pack.
-            if ($cat !== null && in_array($cat, [1, 2, 4, 13], true)) {
+            $cat = $g['igdb_category'] ?? null;
+            if (is_numeric($cat) && in_array((int) $cat, [1, 2, 4, 13], true)) {
                 continue;
             }
 
@@ -529,7 +707,7 @@ class SearchService
             'p'  => $page,
             'pp' => $perPage,
         ]));
-        $platformKey = 'filter_platforms';
+        $platformKey = self::FILTER_PLATFORMS_CACHE_KEY;
 
         // Lire les deux caches en même temps
         $cachedResult    = $this->readCache($resultKey, 300);
@@ -552,7 +730,8 @@ class SearchService
         if ($cachedPlatforms === null) {
             $promises['platforms'] = $this->http->getAsync(
                 $this->supabaseUrl . '/rest/v1/platforms?select=id,name,abbreviation,generation'
-                . '&generation=not.is.null&order=generation.desc,name.asc&limit=200',
+                // Inclut aussi les plateformes sans génération (ex: PC) et trie consoles d'abord.
+                . '&order=generation.desc.nullslast,name.asc&limit=500',
                 ['headers' => $this->headers()]
             );
         }
@@ -595,7 +774,7 @@ class SearchService
     public function getFilterOptions(): array
     {
         return [
-            'platforms' => $this->cached('filter_platforms', fn() => $this->fetchPlatformOptions()),
+            'platforms' => $this->cached(self::FILTER_PLATFORMS_CACHE_KEY, fn() => $this->fetchPlatformOptions()),
             'genres'    => $this->fetchGenreOptions(),
         ];
     }
@@ -646,7 +825,7 @@ class SearchService
     {
         return $this->get(
             '/rest/v1/platforms?select=id,name,abbreviation,generation'
-            . '&generation=not.is.null&order=generation.desc,name.asc&limit=200'
+            . '&order=generation.desc.nullslast,name.asc&limit=500'
         );
     }
 
@@ -681,38 +860,24 @@ class SearchService
             $qs .= "&title=ilike.{$escaped}";
         }
 
-        // Filtre plateforme : via `platform_ids int[]` sur games (migration 005).
-        if (!empty($filters['platform'])) {
-            $id = (int) $filters['platform'];
-            $qs .= "&platform_ids=cs.{" . $id . "}";
+        // Filtre plateformes : via `platform_ids int[]` sur games (migration 005).
+        // Sémantique : "au moins une des plateformes sélectionnées" (overlap).
+        $platforms = $filters['platforms'] ?? [];
+        if (is_array($platforms) && !empty($platforms)) {
+            $ids = array_values(array_unique(array_filter(array_map('intval', $platforms), static fn($x) => $x > 0)));
+            if (!empty($ids)) {
+                $qs .= "&platform_ids=ov.{" . implode(',', $ids) . "}";
+            }
         }
 
-        // Filtre genre (JSONB contains)
-        if (!empty($filters['genre'])) {
-            $genreJson = rawurlencode(json_encode([['name' => $filters['genre']]]));
-            $qs .= "&genres=cs.{$genreJson}";
-        }
-
-        // Plage d'années
-        if (!empty($filters['year_from'])) {
-            $y   = (int) $filters['year_from'];
-            $qs .= "&release_date=gte.{$y}-01-01";
-        }
-        if (!empty($filters['year_to'])) {
-            $y   = (int) $filters['year_to'];
-            $qs .= "&release_date=lte.{$y}-12-31";
-        }
+        // Filtre genres géré plus haut (car conflit possible avec la pagination cursor `or=(...)`).
 
         // Tri "Plus récents" et "Prochaines sorties" : bornes relatives à aujourd'hui
-        // (sans écraser une plage d'années explicitement demandée).
-        $hasYearRange = !empty($filters['year_from']) || !empty($filters['year_to']);
-        if (!$hasYearRange) {
-            if ($sort === 'recent') {
-                $qs .= '&release_date=lte.' . date('Y-m-d');
-            } elseif ($sort === 'upcoming') {
-                $tomorrow = (new \DateTimeImmutable('tomorrow'))->format('Y-m-d');
-                $qs .= '&release_date=gte.' . $tomorrow;
-            }
+        if ($sort === 'recent') {
+            $qs .= '&release_date=lte.' . date('Y-m-d');
+        } elseif ($sort === 'upcoming') {
+            $tomorrow = (new \DateTimeImmutable('tomorrow'))->format('Y-m-d');
+            $qs .= '&release_date=gte.' . $tomorrow;
         }
 
         // Note minimale
@@ -728,10 +893,7 @@ class SearchService
     {
         return match ($sort) {
             'upcoming'   => 'release_date.asc.nullslast,id.asc',
-            'oldest'     => 'release_date.asc.nullslast,id.asc',
             'rating'     => 'igdb_rating.desc.nullslast,id.desc',
-            'title_asc'  => 'title.asc,id.desc',
-            'title_desc' => 'title.desc,id.desc',
             default      => 'release_date.desc.nullslast,id.desc',
         };
     }

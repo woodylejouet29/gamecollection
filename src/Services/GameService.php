@@ -55,7 +55,7 @@ class GameService
             . '?slug=eq.'  . rawurlencode($slug)
             . '&select=id,igdb_id,title,slug,synopsis,storyline,cover_url'
             . ',igdb_rating,igdb_rating_count,aggregated_rating,total_rating'
-            . ',release_date,developer,publisher,genres,screenshots,videos,raw_igdb_data'
+            . ',release_date,developer,publisher,genres,screenshots,videos,version_parent_igdb_id'
             . '&limit=1'
         );
 
@@ -117,17 +117,37 @@ class GameService
             );
         }
 
-        $igdbParentId = (int) ($game['igdb_id'] ?? 0);
-        if ($igdbParentId > 0) {
+        $igdbId = (int) ($game['igdb_id'] ?? 0);
+        $versionParentIgdbId = isset($game['version_parent_igdb_id']) && is_numeric($game['version_parent_igdb_id'])
+            ? (int) $game['version_parent_igdb_id']
+            : 0;
+
+        $isEdition = $versionParentIgdbId > 0;
+        $rootIgdbId = $isEdition ? $versionParentIgdbId : $igdbId;
+
+        if ($rootIgdbId > 0) {
             $baseSibling = $this->supabaseUrl
                 . '/rest/v1/games?select=id,igdb_id,title,slug,synopsis,cover_url'
                 . '&id=neq.' . $gameId . '&';
             // IMPORTANT PERF: sur le projet v2, on stocke aussi `version_parent_igdb_id` (int) dans `games`
             // pour éviter les filtres JSONB coûteux.
-            $promises['version_siblings'] = $this->http->getAsync(
-                $baseSibling . 'version_parent_igdb_id=eq.' . $igdbParentId,
-                ['headers' => $this->headers()]
-            );
+            if ($isEdition) {
+                // Sur une édition : afficher le jeu de base + les autres éditions (même root),
+                // en excluant la ligne courante.
+                $promises['version_siblings'] = $this->http->getAsync(
+                    $baseSibling . 'or=('
+                    . 'igdb_id.eq.' . $rootIgdbId
+                    . ',version_parent_igdb_id.eq.' . $rootIgdbId
+                    . ')',
+                    ['headers' => $this->headers()]
+                );
+            } else {
+                // Sur le jeu de base : afficher uniquement ses éditions.
+                $promises['version_siblings'] = $this->http->getAsync(
+                    $baseSibling . 'version_parent_igdb_id=eq.' . $rootIgdbId,
+                    ['headers' => $this->headers()]
+                );
+            }
         }
 
         try {
@@ -166,9 +186,12 @@ class GameService
         $game['genres']      = $this->jsonField($game['genres']      ?? null);
         $game['screenshots'] = $this->jsonField($game['screenshots'] ?? null);
         $game['videos']      = $this->jsonField($game['videos']      ?? null);
-        $rawIgdb             = $this->jsonField($game['raw_igdb_data'] ?? null);
-        $game['raw_igdb']    = is_array($rawIgdb) ? $rawIgdb : [];
+        // On ne stocke plus le JSON IGDB complet en base (raw_igdb_data), pour éviter l'explosion TOAST.
+        // Les relations "DLC/expansions/remasters..." seront dérivées d'autres tables/colonnes dédiées.
+        $game['raw_igdb'] = [];
         unset($game['raw_igdb_data']);
+        // On n'affiche pas ce champ dans la vue, mais il est utile côté service pour construire le groupe.
+        unset($game['version_parent_igdb_id']);
 
         // ── Plateformes uniques (sans doublons) ───────────────────────────────
         $uniquePlatforms = [];
@@ -209,7 +232,7 @@ class GameService
             $versions,
             $game['raw_igdb'],
             (int) ($game['igdb_id'] ?? 0),
-            $this->collectVersionSiblingRefs($settled)
+            $this->collectVersionSiblingRefs($settled, $rootIgdbId > 0 ? $rootIgdbId : null)
         );
 
         return [
@@ -248,7 +271,7 @@ class GameService
      *
      * @return list<array{igdb_id:int,name:string,slug:string,description:?string,cover_url:?string}>
      */
-    private function collectVersionSiblingRefs(array $settled): array
+    private function collectVersionSiblingRefs(array $settled, ?int $rootIgdbId = null): array
     {
         $a   = $this->fromSettled($settled, 'version_siblings') ?? [];
         $b   = [];
@@ -281,6 +304,22 @@ class GameService
                     : null,
             ];
         }
+
+        // Tri: jeu de base en premier (si présent), puis autres éditions par nom.
+        usort($refs, function (array $x, array $y) use ($rootIgdbId): int {
+            $xi = (int) ($x['igdb_id'] ?? 0);
+            $yi = (int) ($y['igdb_id'] ?? 0);
+            if ($rootIgdbId !== null) {
+                $xIsBase = $xi === $rootIgdbId;
+                $yIsBase = $yi === $rootIgdbId;
+                if ($xIsBase !== $yIsBase) {
+                    return $xIsBase ? -1 : 1;
+                }
+            }
+            $xn = mb_strtolower((string) ($x['name'] ?? ''));
+            $yn = mb_strtolower((string) ($y['name'] ?? ''));
+            return $xn <=> $yn;
+        });
 
         return $refs;
     }

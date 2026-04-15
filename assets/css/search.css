@@ -28,9 +28,18 @@
     border-bottom: 1px solid var(--border);
     padding: 1.75rem 0 1.5rem;
     position: relative;
-    z-index: 10;
+    /* Sous le header fixed (z-index: 200), mais au-dessus de la sidebar pour les suggestions. */
+    z-index: 180;
     /* Permet au menu de suggestions (absolu) de dépasser du hero. */
     overflow: visible;
+}
+
+/* Desktop: le hero reste visible au scroll (sous le header). */
+@media (min-width: 901px) {
+    .search-hero {
+        position: sticky;
+        top: 60px; /* hauteur du header fixed */
+    }
 }
 
 /* Halo décoratif derrière le hero */
@@ -140,7 +149,7 @@
     list-style: none;
     margin: 0;
     padding: 0.5rem 0;
-    z-index: 200;
+    z-index: 900;
     max-height: 380px;
     overflow-y: auto;
 }
@@ -218,20 +227,40 @@
 
 .search-sidebar {
     position: sticky;
-    top: 4.5rem;
+    /* Reste visible pendant le scroll (sous le header fixed ~60px). */
+    top: calc(60px + 1rem);
+    /* Assure que la sidebar (et ses dropdowns) passe au-dessus du contenu. */
+    z-index: 150;
+    align-self: start;
+    /* Si la sidebar devient trop haute, on la rend scrollable sans la “perdre”. */
+    max-height: calc(100vh - (60px + 1rem));
+    overflow: auto;
+}
+
+/* Fallback JS: on fixe uniquement le panneau interne,
+   pour que l'<aside> reste dans la grille (évite les colonnes qui "cassent"). */
+.search-sidebar.is-fixed {
+    position: relative;
+}
+.search-sidebar.is-fixed .search-sidebar__form {
+    position: fixed;
+    top: calc(60px + 1rem);
 }
 
 .search-sidebar__form {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 18px;
-    overflow: hidden;
+    /* Permet aux menus (suggestions) en position absolue de dépasser
+       sans être coupés par le conteneur de la sidebar. */
+    overflow: visible;
 }
 
 .search-sidebar__header {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    border-radius: 18px 18px 0 0;
     padding: 1rem 1.25rem;
     border-bottom: 1px solid var(--border);
     background: color-mix(in srgb, var(--accent) 6%, var(--surface));
@@ -280,8 +309,16 @@
 .search-sidebar__group {
     padding: 1rem 1.25rem;
     border-bottom: 1px solid var(--border);
+    position: relative;
+    /* Base neutre: évite que les groupes suivants passent au-dessus du dropdown actif. */
+    z-index: 0;
 }
 .search-sidebar__group:last-of-type { border-bottom: none; }
+
+/* Le groupe actif (input focus) doit survoler les autres groupes */
+.search-sidebar__group:focus-within {
+    z-index: 20;
+}
 
 .search-sidebar__label {
     display: flex;
@@ -293,6 +330,24 @@
     text-transform: uppercase;
     letter-spacing: 0.08em;
     margin-bottom: 0.6rem;
+}
+
+.search-sidebar__hint {
+    margin: -0.25rem 0 0.6rem;
+    font-size: 0.78rem;
+    color: var(--text-3);
+    line-height: 1.4;
+}
+
+/* Genre conditionnel: désactivé tant que pas de plateforme ou q trop court */
+.search-sidebar__group.is-disabled {
+    opacity: 0.55;
+}
+.search-sidebar__group.is-disabled .search-tag-picker__input {
+    pointer-events: none;
+}
+.search-sidebar__group.is-disabled .search-tag-picker__tags {
+    pointer-events: none;
 }
 
 .search-sidebar__rating-val {
@@ -321,6 +376,120 @@
     border-color: var(--accent);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
 }
+
+/* ──────────────────────────────────────────────
+   Tag pickers (plateformes / genres) — multi-select
+   Reprend le style des champs + badges existants
+   ────────────────────────────────────────────── */
+
+.search-tag-picker {
+    position: relative;
+    z-index: 1;
+}
+
+.search-tag-picker__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-bottom: 0.55rem;
+}
+
+.search-tag-picker__tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--accent) 14%, var(--surface-2));
+    color: var(--accent-3);
+    border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.search-tag-picker__remove {
+    width: 20px;
+    height: 20px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    color: var(--accent-3);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    font-weight: 900;
+    transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.15s;
+    flex-shrink: 0;
+}
+
+.search-tag-picker__remove:hover {
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+    color: var(--text);
+    transform: translateY(-1px);
+}
+
+.search-tag-picker__remove:active {
+    transform: translateY(0);
+}
+
+.search-tag-picker__input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 0.875rem;
+    padding: 0.55rem 0.75rem;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.search-tag-picker__input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
+}
+
+.search-tag-picker__suggestions {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    /* Au-dessus des cartes et du contenu adjacent */
+    z-index: 650;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+    padding: 0.4rem 0;
+    max-height: 260px;
+    overflow-y: auto;
+}
+
+.search-tag-picker__suggestion {
+    padding: 0.55rem 0.85rem;
+    cursor: pointer;
+    font-size: 0.86rem;
+    font-weight: 650;
+    color: var(--text);
+    transition: background 0.12s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.search-tag-picker__suggestion:hover {
+    background: var(--surface-2);
+}
+
+.search-tag-picker__suggestions[hidden] { display: none; }
 
 .search-sidebar__range {
     display: flex;
@@ -468,12 +637,22 @@
     padding-right: 6rem;
 }
 .game-grid--list .search-card__add-btn {
-    position: static;
+    /* En vue liste (tablette/PC), comme sur mobile : centré sur l'image */
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    right: auto;
+    bottom: auto;
     opacity: 1;
-    transform: none;
-    align-self: center;
-    flex-shrink: 0;
-    margin-left: auto;
+    transform: translate(-50%, -50%);
+    margin-left: 0;
+}
+
+/* En vue liste, on ne doit jamais "décaler" le bouton au hover (il est centré via translate) */
+.game-grid--list .search-card:hover .search-card__add-btn,
+.game-grid--list .search-card:focus-within .search-card__add-btn {
+    opacity: 1;
+    transform: translate(-50%, -50%);
 }
 .game-grid--list .search-card__dev[data-role="dev-line"] { display: none; }
 .game-grid--list .search-card__date[data-role="date-line"] { display: none; }
@@ -665,22 +844,7 @@
     margin: 0.2rem 0 0.35rem;
 }
 
-.search-card__platform-badge {
-    font-size: 0.6rem;
-    font-weight: 700;
-    padding: 2px 7px;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--accent) 14%, var(--surface-2));
-    color: var(--accent-3);
-    border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
-    letter-spacing: 0.02em;
-    white-space: nowrap;
-}
-.search-card__platform-badge--more {
-    background: var(--surface-2);
-    color: var(--text-3);
-    border-color: var(--border);
-}
+/* Badges plateformes: désormais via `platform-badges.css` (.platform-badge + variantes) */
 
 .search-card__date {
     font-size: 0.72rem;
@@ -1018,29 +1182,89 @@
 #search-results-area.is-loading {
     pointer-events: none;
 }
-#search-results-area.is-loading::before {
+
+/* Skeleton loader (remplace le spinner) */
+.search-skeleton {
+    border-radius: 14px;
+    padding: 0.25rem;
+}
+
+.search-skeleton__grid {
+    display: grid;
+    gap: 1rem;
+}
+.search-skeleton--grid  .search-skeleton__grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+.search-skeleton--cards .search-skeleton__grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+.search-skeleton--list  .search-skeleton__grid { grid-template-columns: 1fr; gap: 0.6rem; }
+
+.search-skeleton__card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--card-radius);
+    overflow: hidden;
+}
+.search-skeleton--list .search-skeleton__card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    border-radius: 12px;
+}
+
+.search-skeleton__cover {
+    position: relative;
+    background: var(--surface-2);
+}
+.search-skeleton--list .search-skeleton__cover {
+    width: 60px;
+    min-width: 60px;
+    aspect-ratio: 3 / 4;
+    border-radius: 8px;
+    margin: 0.6rem 0 0.6rem 0.6rem;
+    overflow: hidden;
+}
+.search-skeleton--grid .search-skeleton__cover,
+.search-skeleton--cards .search-skeleton__cover {
+    aspect-ratio: 3 / 4;
+}
+
+.search-skeleton__body {
+    padding: 0.7rem 0.65rem 0.65rem;
+}
+.search-skeleton--grid .search-skeleton__body { padding: 0.6rem 0.5rem 0.5rem; }
+.search-skeleton--list .search-skeleton__body {
+    flex: 1;
+    padding: 0.5rem 0.65rem 0.5rem 0;
+    min-width: 0;
+}
+
+.sk {
+    position: relative;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--border) 55%, transparent);
+    overflow: hidden;
+}
+.sk::after {
     content: '';
     position: absolute;
     inset: 0;
-    background: color-mix(in srgb, var(--bg) 60%, transparent);
-    z-index: 9;
-    border-radius: 8px;
+    transform: translateX(-100%);
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        color-mix(in srgb, var(--accent) 14%, transparent) 45%,
+        transparent 100%
+    );
+    animation: skShimmer 1.15s ease-in-out infinite;
 }
-#search-results-area.is-loading::after {
-    content: '';
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 46px;
-    height: 46px;
-    border: 4px solid color-mix(in srgb, var(--accent) 20%, var(--border));
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.7s linear infinite;
-    z-index: 600;
-    box-shadow: 0 0 0 10px var(--surface), 0 6px 24px rgba(0,0,0,0.35);
+
+@keyframes skShimmer {
+    0%   { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
 }
+
+.sk--title { height: 12px; width: 85%; border-radius: 8px; }
+.sk--line  { height: 10px; width: 60%; border-radius: 8px; margin-top: 0.55rem; opacity: 0.85; }
+.sk--chips { height: 10px; width: 72%; border-radius: 999px; margin-top: 0.55rem; opacity: 0.75; }
 
 /* ──────────────────────────────────────────────
    Accessibilité
@@ -1206,10 +1430,7 @@
     .game-grid--grid .search-card__title {
         font-size: 0.78rem;
     }
-    .game-grid--grid .search-card__platform-badge {
-        font-size: 0.56rem;
-        padding: 2px 5px;
-    }
+    /* Les badges compacts sont gérés par `.platform-badge--xs` */
 
     /* Bouton + toujours visible sur mobile */
     .search-card__add-btn {
@@ -1248,6 +1469,20 @@
     .game-grid--list .search-card__add-btn {
         width: 32px;
         height: 32px;
+    }
+
+    /* Mode liste (mobile) : bouton "+" centré sur l'image */
+    .game-grid--list .search-card__cover { position: relative; }
+    .game-grid--list .search-card__add-btn {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        right: auto;
+        bottom: auto;
+        margin-left: 0;
+        transform: translate(-50%, -50%);
+        z-index: 4;
+        opacity: 1;
     }
 
     /* FAB mobile repositionnée (au-dessus de la selection-bar si visible) */

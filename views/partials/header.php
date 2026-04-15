@@ -25,16 +25,47 @@ function navActiveClass(string $currentPath, string $prefix): string {
     <div class="header__inner">
 
         <a href="/" class="header__logo">
-            <svg class="header__logo-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M6 12h4m-2-2v4M15 11h.01M18 11h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                <rect x="2" y="6" width="20" height="12" rx="3" stroke="currentColor" stroke-width="2"/>
-            </svg>
-            <span class="header__logo-text">GameCollection</span>
+            <img
+                class="header__logo-img header__logo-img--desktop-dark"
+                src="/images/logositeblanc.png"
+                alt="GameCollection"
+                width="140"
+                height="36"
+                loading="eager"
+                decoding="async"
+            >
+            <img
+                class="header__logo-img header__logo-img--desktop-light"
+                src="/images/logositenoir.png"
+                alt="GameCollection"
+                width="140"
+                height="36"
+                loading="eager"
+                decoding="async"
+            >
+            <img
+                class="header__logo-img header__logo-img--mobile-dark"
+                src="/images/logomobileblanc.png"
+                alt="GameCollection"
+                width="36"
+                height="36"
+                loading="eager"
+                decoding="async"
+            >
+            <img
+                class="header__logo-img header__logo-img--mobile-light"
+                src="/images/logomobilenoir.png"
+                alt="GameCollection"
+                width="36"
+                height="36"
+                loading="eager"
+                decoding="async"
+            >
         </a>
 
         <?php /* Navigation principale (masquée en mobile) */ ?>
         <nav class="header__nav" aria-label="Navigation principale">
-            <a href="/search"     class="header__nav-link<?= navActive($currentPath, '/search') ?>">Catalogue</a>
+            <a href="/search"     class="header__nav-link<?= navActive($currentPath, '/search') ?>">Rechercher</a>
             <a href="/agenda"     class="header__nav-link<?= navActive($currentPath, '/agenda') ?>">Agenda</a>
             <?php if ($authUser): ?>
             <a href="/collection" class="header__nav-link<?= navActive($currentPath, '/collection') ?>">Ma collection</a>
@@ -148,7 +179,7 @@ function navActiveClass(string $currentPath, string $prefix): string {
         <div class="header__drawer-section">
             <a href="/search" class="header__drawer-link<?= navActiveClass($currentPath, '/search') ?>">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-                Catalogue
+                Rechercher
             </a>
             <a href="/agenda" class="header__drawer-link<?= navActiveClass($currentPath, '/agenda') ?>">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>

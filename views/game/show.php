@@ -15,6 +15,8 @@
  */
 
 use App\Data\PlatformAbbreviations;
+use App\Data\GenreTranslations;
+use App\Data\PlatformBadgeColors;
 
 $game             = $game              ?? [];
 $uniquePlatforms  = $unique_platforms  ?? [];
@@ -190,7 +192,15 @@ function platformLabel(array $p): string
                 <?php if (!empty($uniquePlatforms)): ?>
                     <div class="game-hero__platforms">
                         <?php foreach ($uniquePlatforms as $p): ?>
-                            <span class="platform-badge"><?= platformLabel($p) ?></span>
+                            <span class="platform-badge"
+                                  style="<?= htmlspecialchars(PlatformBadgeColors::style(
+                                      (int) ($p['id'] ?? 0),
+                                      (string) ($p['slug'] ?? ''),
+                                      (string) ($p['abbreviation'] ?? ''),
+                                      (string) ($p['name'] ?? '')
+                                  ), ENT_QUOTES) ?>">
+                                <?= platformLabel($p) ?>
+                            </span>
                         <?php endforeach; ?>
                     </div>
                 <?php endif; ?>
@@ -225,7 +235,7 @@ function platformLabel(array $p): string
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
                                 <path d="M4 6h16M4 10h12M4 14h8"/>
                             </svg>
-                            <?= htmlspecialchars(implode(', ', $genreNames)) ?>
+                            <?= htmlspecialchars(implode(', ', array_map([GenreTranslations::class, 'translate'], $genreNames))) ?>
                         </span>
                     <?php endif; ?>
                 </div>
@@ -455,7 +465,7 @@ function platformLabel(array $p): string
                                                     $gn = is_array($g) ? ($g['name'] ?? '') : '';
                                                     if (!$gn) continue;
                                                 ?>
-                                                    <span class="info-tag"><?= htmlspecialchars($gn) ?></span>
+                                                    <span class="info-tag"><?= htmlspecialchars(GenreTranslations::translate($gn)) ?></span>
                                                 <?php endforeach; ?>
                                             </div>
                                         </dd>
@@ -518,7 +528,15 @@ function platformLabel(array $p): string
                                                 if (!$pLabel) $pLabel = PlatformAbbreviations::get($pf['name'] ?? '') ?: ($pf['name'] ?? '?');
                                             ?>
                                                 <div class="release-entry">
-                                                    <span class="release-entry__platform"><?= htmlspecialchars($pLabel) ?></span>
+                                                    <span class="platform-badge platform-badge--xs"
+                                                          style="<?= htmlspecialchars(PlatformBadgeColors::style(
+                                                              (int) ($pf['id'] ?? 0),
+                                                              (string) ($pf['slug'] ?? ''),
+                                                              (string) ($pf['abbreviation'] ?? ''),
+                                                              (string) ($pf['name'] ?? '')
+                                                          ), ENT_QUOTES) ?>">
+                                                        <?= htmlspecialchars($pLabel) ?>
+                                                    </span>
                                                     <span class="release-entry__date"><?= fmtGameDate($e['date']) ?></span>
                                                 </div>
                                             <?php endforeach; ?>
@@ -768,6 +786,7 @@ function platformLabel(array $p): string
 
         <?php /* ───────────── SIDEBAR ───────────── */ ?>
         <aside class="game-sidebar">
+        <div class="game-sidebar__inner">
 
             <?php /* Informations */ ?>
             <div class="game-info-box">
@@ -797,7 +816,7 @@ function platformLabel(array $p): string
                                     $gn = is_array($g) ? ($g['name'] ?? '') : '';
                                     if (!$gn) continue;
                                 ?>
-                                    <span class="info-tag"><?= htmlspecialchars($gn) ?></span>
+                                    <span class="info-tag"><?= htmlspecialchars(GenreTranslations::translate($gn)) ?></span>
                                 <?php endforeach; ?>
                             </div>
                         </dd>
@@ -860,7 +879,15 @@ function platformLabel(array $p): string
                                 if (!$pLabel) $pLabel = PlatformAbbreviations::get($pf['name'] ?? '') ?: ($pf['name'] ?? '?');
                             ?>
                                 <div class="release-entry">
-                                    <span class="release-entry__platform"><?= htmlspecialchars($pLabel) ?></span>
+                                    <span class="platform-badge platform-badge--xs"
+                                          style="<?= htmlspecialchars(PlatformBadgeColors::style(
+                                              (int) ($pf['id'] ?? 0),
+                                              (string) ($pf['slug'] ?? ''),
+                                              (string) ($pf['abbreviation'] ?? ''),
+                                              (string) ($pf['name'] ?? '')
+                                          ), ENT_QUOTES) ?>">
+                                        <?= htmlspecialchars($pLabel) ?>
+                                    </span>
                                     <span class="release-entry__date"><?= fmtGameDate($e['date']) ?></span>
                                 </div>
                             <?php endforeach; ?>
@@ -901,6 +928,7 @@ function platformLabel(array $p): string
             </div>
             <?php endif; ?>
 
+        </div>
         </aside><!-- /.game-sidebar -->
 
     </div><!-- /.game-body -->
@@ -1016,3 +1044,28 @@ function platformLabel(array $p): string
         <div class="video-embed-wrap" id="video-embed-container"></div>
     </div>
 </div>
+
+<script>
+(() => {
+  // Desktop only: épingle la sidebar après la bannière (hero).
+  const mq = window.matchMedia('(min-width: 769px)');
+  const hero = document.querySelector('.game-hero');
+  const sidebar = document.querySelector('.game-sidebar');
+  if (!hero || !sidebar) return;
+
+  function update() {
+    if (!mq.matches) {
+      sidebar.classList.remove('is-fixed');
+      return;
+    }
+    const heroBottom = hero.getBoundingClientRect().bottom + window.scrollY;
+    const threshold = heroBottom - 90; // petit buffer pour éviter l'overlap
+    sidebar.classList.toggle('is-fixed', window.scrollY >= threshold);
+  }
+
+  update();
+  window.addEventListener('scroll', update, { passive: true });
+  window.addEventListener('resize', update);
+  mq.addEventListener?.('change', update);
+})();
+</script>

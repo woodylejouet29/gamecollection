@@ -91,6 +91,9 @@ const SelectionStore = (() => {
     });
     if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
 
+    // Permet à d'autres modules (AjaxSearch) de fermer la sidebar après "Appliquer les filtres".
+    window.addEventListener('search:closeFilters', closeSidebar);
+
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape') closeSidebar();
     });
@@ -374,6 +377,35 @@ const LazyImages = (() => {
         clearBtn.style.display = heroInput.value.trim() ? '' : 'none';
     }
 
+    function resetSidebarUi() {
+        // Reset natif des inputs "standards"
+        filtersForm.reset();
+
+        // Les tag-pickers injectent des <span> + <input type="hidden"> : reset() ne les enlève pas.
+        const platformTags = document.getElementById('platform-tags');
+        const genreTags    = document.getElementById('genre-tags');
+        if (platformTags) platformTags.innerHTML = '';
+        if (genreTags) genreTags.innerHTML = '';
+
+        const platformInput = document.getElementById('f-platform');
+        const genreInput    = document.getElementById('f-genre');
+        if (platformInput) platformInput.value = '';
+        if (genreInput) genreInput.value = '';
+
+        const platformSug = document.getElementById('platform-suggestions');
+        const genreSug    = document.getElementById('genre-suggestions');
+        if (platformSug) platformSug.hidden = true;
+        if (genreSug) genreSug.hidden = true;
+
+        // Resync slider note → libellé (si présent)
+        const slider  = document.getElementById('f-rating');
+        const display = document.getElementById('rating-val-display');
+        if (slider && display) {
+            const v = parseInt(slider.value || '0', 10);
+            display.textContent = v > 0 ? `${v}/100` : 'Toutes';
+        }
+    }
+
     function hideSuggestions() {
         if (!suggestions) return;
         suggestions.hidden = true;
@@ -390,8 +422,8 @@ const LazyImages = (() => {
         // On laisse quand même passer les clears (q vide).
         const len = q.trim().length;
         if (len === 0) return true;
+        // À partir de 3 caractères minimum.
         if (len < 3) return false;
-        if (hasDigit(q) && len < 4) return false;
         return true;
     }
 
@@ -487,7 +519,7 @@ const LazyImages = (() => {
     async function loadSuggestions(q) {
         if (!suggestions) return;
         const trimmed = q.trim();
-        if (trimmed.length < 2) {
+        if (trimmed.length < 3) {
             hideSuggestions();
             return;
         }
@@ -588,6 +620,11 @@ const LazyImages = (() => {
         form.addEventListener('submit', e => {
             e.preventDefault();
             clearTimeout(debounceTimer);
+            // Sur mobile, on ferme le panneau de filtres dès l'application
+            // pour revenir immédiatement à la page de résultats.
+            if (form === filtersForm) {
+                window.dispatchEvent(new Event('search:closeFilters'));
+            }
             loadResults(buildUrl());
         });
     });
@@ -618,10 +655,13 @@ const LazyImages = (() => {
         // Uniquement les liens dans la zone résultats (pas le nav header)
         if (btn.closest('#search-results-area') || btn.closest('.search-sidebar')) {
             e.preventDefault();
-            // Réinitialiser aussi les champs de la sidebar
-            filtersForm.reset();
-            if (heroInput) heroInput.value = '';
-            syncClearButton();
+            // Réinitialiser : côté sidebar, on doit aussi enlever les tags injectés.
+            if (btn.classList.contains('search-sidebar__reset') || btn.getAttribute('href') === '/search') {
+                resetSidebarUi();
+                if (heroInput) heroInput.value = '';
+                syncClearButton();
+                hideSuggestions();
+            }
             loadResults(btn.href);
         }
     });
@@ -636,13 +676,59 @@ const LazyImages = (() => {
     // ─────────────────────────────────────────
 
     let abortCtrl = null;
+    let requestSeq = 0;
+
+    function renderSkeleton(mode) {
+        const m = (mode === 'cards' || mode === 'list') ? mode : 'grid';
+        const count = m === 'list' ? 10 : 16;
+        const cards = Array.from({ length: count }).map(() => {
+            // En mode liste: cover + texte à côté
+            if (m === 'list') {
+                return `
+                    <div class="search-skeleton__card">
+                        <div class="search-skeleton__cover sk" aria-hidden="true"></div>
+                        <div class="search-skeleton__body">
+                            <div class="sk sk--title" aria-hidden="true"></div>
+                            <div class="sk sk--chips" aria-hidden="true"></div>
+                            <div class="sk sk--line" aria-hidden="true"></div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Grille/cartes: cover en haut + texte dessous
+            return `
+                <div class="search-skeleton__card">
+                    <div class="search-skeleton__cover sk" aria-hidden="true"></div>
+                    <div class="search-skeleton__body">
+                        <div class="sk sk--title" aria-hidden="true"></div>
+                        <div class="sk sk--chips" aria-hidden="true"></div>
+                        <div class="sk sk--line" aria-hidden="true"></div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        return `
+            <div class="search-skeleton search-skeleton--${m}" aria-hidden="true">
+                <div class="search-skeleton__grid">
+                    ${cards}
+                </div>
+            </div>
+        `;
+    }
 
     async function loadResults(url, { pushState = true } = {}) {
+        const seq = ++requestSeq;
+
         // Annuler la requête précédente si toujours en cours
         abortCtrl?.abort();
         abortCtrl = new AbortController();
 
         area.classList.add('is-loading');
+        // Skeleton immédiatement (UX premium) : pas de page "vide"
+        const mode = (typeof getCookie === 'function' ? (getCookie('view_mode') || 'grid') : 'grid');
+        area.innerHTML = renderSkeleton(mode);
 
         try {
             const res = await fetch(url, {
@@ -652,6 +738,9 @@ const LazyImages = (() => {
 
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const html = await res.text();
+
+            // Si une requête plus récente a déjà été lancée, on ignore cette réponse.
+            if (seq !== requestSeq) return;
 
             // Remplace le contenu
             area.innerHTML = html;
@@ -685,7 +774,10 @@ const LazyImages = (() => {
             // Fallback : navigation complète en cas d'erreur réseau
             window.location.href = url;
         } finally {
-            area.classList.remove('is-loading');
+            // Ne retire le loader que si cette requête est la dernière.
+            if (seq === requestSeq) {
+                area.classList.remove('is-loading');
+            }
         }
     }
 
@@ -705,7 +797,9 @@ const LazyImages = (() => {
         new FormData(filtersForm).forEach((v, k) => {
             const val = String(v).trim();
             if (k !== 'q' && val !== '' && val !== '0') {
-                params.set(k, val);
+                // Support multi-valeurs (ex: platform[], genre[])
+                if (k.endsWith('[]')) params.append(k, val);
+                else params.set(k, val);
             }
         });
 
@@ -728,11 +822,16 @@ const LazyImages = (() => {
     function updateFabBadge(url) {
         if (!fab) return;
         const sp = new URL(url, window.location.origin).searchParams;
-        const filterKeys = ['platform', 'genre', 'year_from', 'year_to', 'rating_min'];
-        const count = filterKeys.filter(k => {
-            const v = sp.get(k);
-            return v !== null && v !== '' && v !== '0';
-        }).length;
+        const hasAny = (keys) => keys.some(k => {
+            const vals = sp.getAll(k);
+            if (!vals || vals.length === 0) return false;
+            return vals.some(v => v !== null && v !== '' && v !== '0');
+        });
+        const count = [
+            hasAny(['platform', 'platform[]']) ? 1 : 0,
+            hasAny(['genre', 'genre[]']) ? 1 : 0,
+            hasAny(['rating_min']) ? 1 : 0,
+        ].reduce((a, b) => a + b, 0);
 
         let badge = fab.querySelector('.search-filters-fab__badge');
         if (count > 0) {
@@ -745,6 +844,283 @@ const LazyImages = (() => {
         } else {
             badge?.remove();
         }
+    }
+})();
+
+// ──────────────────────────────────────────────
+//  Conditional Genre Filter — éviter timeouts
+// ──────────────────────────────────────────────
+
+(function ConditionalGenreFilter() {
+    const group = document.getElementById('genre-filter-group');
+    if (!group) return;
+
+    const hint = document.getElementById('genre-filter-hint');
+    const heroInput = document.getElementById('search-main-input');
+    const platformTags = document.getElementById('platform-tags');
+    const genreTags = document.getElementById('genre-tags');
+    const genreInput = document.getElementById('f-genre');
+    const genreSug = document.getElementById('genre-suggestions');
+
+    const MIN_CHARS = 3;
+
+    const platformCount = () => {
+        if (!platformTags) return 0;
+        return platformTags.querySelectorAll('input[type="hidden"][name="platform[]"]').length;
+    };
+
+    const queryLen = () => (heroInput?.value ?? '').trim().length;
+
+    function clearGenres() {
+        if (genreTags) genreTags.innerHTML = '';
+        if (genreInput) genreInput.value = '';
+        if (genreSug) genreSug.hidden = true;
+    }
+
+    function apply() {
+        const enabled = platformCount() > 0 || queryLen() >= MIN_CHARS;
+        group.classList.toggle('is-disabled', !enabled);
+        if (hint) hint.hidden = enabled;
+
+        // Si on désactive le filtre genre, on le vide pour éviter qu'il continue d'impacter les requêtes.
+        if (!enabled) {
+            const hadAny = genreTags && genreTags.querySelector('input[type="hidden"][name="genre[]"]');
+            if (hadAny) clearGenres();
+        }
+    }
+
+    // Mise à jour initiale
+    apply();
+
+    // Mise à jour quand l'utilisateur tape
+    heroInput?.addEventListener('input', apply);
+
+    // Mise à jour quand on ajoute/enlève des plateformes (tags)
+    platformTags?.addEventListener('click', () => setTimeout(apply, 0));
+    document.addEventListener('click', () => setTimeout(apply, 0));
+})();
+
+// ──────────────────────────────────────────────
+//  Sticky sidebar fallback (desktop)
+//  Certains contextes CSS peuvent casser position: sticky.
+// ──────────────────────────────────────────────
+
+(function StickySidebarFallback() {
+    const sidebar = document.getElementById('search-sidebar');
+    const layout  = document.querySelector('.search-layout');
+    if (!sidebar || !layout) return;
+
+    const panel = sidebar.querySelector('.search-sidebar__form');
+    if (!panel) return;
+
+    const mq = window.matchMedia('(min-width: 901px)');
+
+    let ticking = false;
+    let baseTop = 0;
+
+    function recalc() {
+        // top CSS = 60px + 1rem (≈16px) -> on lit depuis CSS via getComputedStyle
+        const topStr = getComputedStyle(panel).top || getComputedStyle(sidebar).top || '0px';
+        baseTop = parseFloat(topStr) || 0;
+    }
+
+    function onScroll() {
+        if (!mq.matches) return;
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(() => {
+            ticking = false;
+
+            const layoutRect  = layout.getBoundingClientRect();
+            const sidebarRect = sidebar.getBoundingClientRect();
+
+            // Si on est au-dessus du layout, on reset.
+            if (layoutRect.top >= baseTop) {
+                sidebar.classList.remove('is-fixed');
+                panel.style.left = '';
+                panel.style.width = '';
+                panel.style.transform = '';
+                return;
+            }
+
+            // Fixer la sidebar
+            sidebar.classList.add('is-fixed');
+            panel.style.left = `${sidebarRect.left}px`;
+            panel.style.width = `${sidebarRect.width}px`;
+
+            // Empêcher de dépasser le bas du layout
+            const panelHeight = panel.getBoundingClientRect().height;
+            const maxTop = layoutRect.bottom - panelHeight - baseTop;
+            const overflow = baseTop - maxTop; // >0 => on doit remonter
+            panel.style.transform = overflow > 0 ? `translateY(-${overflow}px)` : '';
+        });
+    }
+
+    function onResize() {
+        recalc();
+        onScroll();
+    }
+
+    recalc();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onResize);
+    mq.addEventListener?.('change', onResize);
+    onScroll();
+})();
+
+// ──────────────────────────────────────────────
+//  TagPickers — plateformes + genres (sidebar)
+// ──────────────────────────────────────────────
+
+(function TagPickers() {
+    const dataEl = document.getElementById('search-filter-data');
+    if (!dataEl) return;
+
+    let data = null;
+    try { data = JSON.parse(dataEl.textContent || '{}'); } catch { data = null; }
+    if (!data) return;
+
+    const platformPicker = createPicker({
+        rootId: 'platform-picker',
+        inputId: 'f-platform',
+        tagsId: 'platform-tags',
+        suggestionsId: 'platform-suggestions',
+        hiddenName: 'platform[]',
+        items: Array.isArray(data.platforms) ? data.platforms
+            .filter(p => p && Number(p.id) > 0)
+            .map(p => ({
+                id: String(p.id),
+                label: (p.abbreviation ? String(p.abbreviation) : String(p.name || `#${p.id}`))
+                    + (p.generation ? ` (Gen.${Number(p.generation)})` : ''),
+                search: `${p.abbreviation || ''} ${p.name || ''} ${p.generation ? 'gen ' + p.generation : ''}`.trim(),
+            })) : [],
+    });
+
+    const genrePicker = createPicker({
+        rootId: 'genre-picker',
+        inputId: 'f-genre',
+        tagsId: 'genre-tags',
+        suggestionsId: 'genre-suggestions',
+        hiddenName: 'genre[]',
+        items: Array.isArray(data.genres) ? data.genres
+            .map(g => {
+                // Supporte deux formats:
+                // - ancien: ["Adventure", ...]
+                // - nouveau: [{id, label, search}, ...]
+                if (g && typeof g === 'object') {
+                    const id = String(g.id || '').trim();
+                    if (!id) return null;
+                    return {
+                        id,
+                        label: String(g.label || id),
+                        search: String(g.search || (String(g.label || '') + ' ' + id)).trim(),
+                    };
+                }
+                const id = String(g || '').trim();
+                if (!id) return null;
+                return { id, label: id, search: id };
+            })
+            .filter(Boolean) : [],
+    });
+
+    document.addEventListener('click', (e) => {
+        const inside = (id) => document.getElementById(id)?.contains(e.target);
+        if (!inside('platform-picker')) platformPicker?.hide();
+        if (!inside('genre-picker')) genrePicker?.hide();
+    });
+
+    function createPicker({ rootId, inputId, tagsId, suggestionsId, hiddenName, items }) {
+        const root = document.getElementById(rootId);
+        const input = document.getElementById(inputId);
+        const tags = document.getElementById(tagsId);
+        const sug = document.getElementById(suggestionsId);
+        if (!root || !input || !tags || !sug) return null;
+
+        const selectedIds = () => new Set(
+            Array.from(tags.querySelectorAll('input[type="hidden"][name="' + hiddenName + '"]'))
+                .map(i => String(i.value))
+        );
+
+        const normalize = (s) => String(s || '').toLowerCase();
+
+        function renderSuggestions(query) {
+            const q = normalize(query).trim();
+            const selected = selectedIds();
+            const list = items
+                .filter(it => !selected.has(it.id))
+                .filter(it => q === '' ? false : normalize(it.search).includes(q))
+                .slice(0, 12);
+
+            sug.innerHTML = '';
+            if (list.length === 0) {
+                sug.hidden = true;
+                return;
+            }
+            list.forEach(it => {
+                const li = document.createElement('li');
+                li.className = 'search-tag-picker__suggestion';
+                li.setAttribute('role', 'option');
+                li.dataset.id = it.id;
+                li.textContent = it.label;
+                li.addEventListener('mousedown', (e) => e.preventDefault());
+                li.addEventListener('click', () => {
+                    addTag(it.id, it.label);
+                    input.value = '';
+                    sug.hidden = true;
+                });
+                sug.appendChild(li);
+            });
+            sug.hidden = false;
+        }
+
+        function addTag(id, label) {
+            const selected = selectedIds();
+            if (selected.has(String(id))) return;
+
+            const span = document.createElement('span');
+            span.className = 'search-tag-picker__tag';
+            span.dataset.id = String(id);
+            span.appendChild(document.createTextNode(label));
+
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'search-tag-picker__remove';
+            btn.setAttribute('aria-label', 'Retirer');
+            btn.dataset.removeTag = '';
+            btn.innerHTML = '&times;';
+            btn.addEventListener('click', () => span.remove());
+            span.appendChild(btn);
+
+            const hidden = document.createElement('input');
+            hidden.type = 'hidden';
+            hidden.name = hiddenName;
+            hidden.value = String(id);
+            span.appendChild(hidden);
+
+            tags.appendChild(span);
+        }
+
+        tags.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-remove-tag]');
+            if (!btn) return;
+            const tag = btn.closest('.search-tag-picker__tag');
+            tag?.remove();
+        });
+
+        let t = null;
+        input.addEventListener('input', () => {
+            clearTimeout(t);
+            t = setTimeout(() => renderSuggestions(input.value), 80);
+        });
+        input.addEventListener('focus', () => renderSuggestions(input.value));
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                sug.hidden = true;
+            }
+        });
+
+        function hide() { sug.hidden = true; }
+        return { hide };
     }
 })();
 

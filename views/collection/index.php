@@ -15,6 +15,8 @@
  *   $authUser      array
  */
 
+use App\Data\PlatformBadgeColors;
+
 // ── Helpers ──────────────────────────────────────────────────────────
 function colCoverSrc(?string $url): string
 {
@@ -53,8 +55,8 @@ $statusColors = [
     'abandoned'       => 'abandoned',
 ];
 $conditionLabels = [
-    'mint'       => 'Mint',
-    'near_mint'  => 'Near Mint',
+    'mint'       => 'Neuf - Sous blister',
+    'near_mint'  => 'Neuf',
     'very_good'  => 'Très bon',
     'good'       => 'Bon',
     'acceptable' => 'Acceptable',
@@ -168,6 +170,13 @@ $sortOptions = [
                                 <line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/>
                             </svg>
                             CSV (Excel)
+                        </a>
+                        <a href="/api/collection/export-xlsx-by-platform" class="col-export-item" role="menuitem" id="col-export-xlsx-by-platform">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" style="width:14px;height:14px">
+                                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                                <path d="M8 13h8M8 17h8" />
+                            </svg>
+                            XLSX par plateforme
                         </a>
                     </div>
                 </div>
@@ -448,20 +457,6 @@ $sortOptions = [
                         </div>
                     <?php endif; ?>
 
-                    <?php /* Status badge */ ?>
-                    <span class="col-status-badge col-status-badge--<?= $statusCls ?>"><?= htmlspecialchars($statusLbl) ?></span>
-
-                    <?php /* Rating badge (user review) */ ?>
-                    <?php if ($review && isset($review['rating'])): ?>
-                        <span class="col-rating-badge"><?= (int)$review['rating'] ?>/10</span>
-                    <?php endif; ?>
-
-                    <?php /* Type badge (D = Démat, P = Physique, pour vue grille) */ ?>
-                    <span class="col-type-badge col-type-badge--<?= $isPhys ? 'phys' : 'digi' ?>"
-                          title="<?= $isPhys ? 'Physique' : 'Dématérialisé' ?>">
-                        <?= $isPhys ? 'P' : 'D' ?>
-                    </span>
-
                     <?php /* Overlay actions au survol */ ?>
                     <div class="col-card__overlay" aria-hidden="true">
                         <button type="button" class="col-card__edit-btn" data-action="quick-edit"
@@ -490,7 +485,13 @@ $sortOptions = [
 
                     <div class="col-card__meta">
                         <?php if ($platform['abbreviation'] || $platform['name']): ?>
-                            <span class="col-card__platform">
+                            <span class="platform-badge platform-badge--xs"
+                                  style="<?= htmlspecialchars(PlatformBadgeColors::style(
+                                      (int) ($platform['id'] ?? 0),
+                                      (string) ($platform['slug'] ?? ''),
+                                      (string) ($platform['abbreviation'] ?? ''),
+                                      (string) ($platform['name'] ?? '')
+                                  ), ENT_QUOTES) ?>">
                                 <?= htmlspecialchars($platform['abbreviation'] ?: $platform['name']) ?>
                             </span>
                         <?php endif; ?>
@@ -649,8 +650,8 @@ $sortOptions = [
             <div class="form-group" id="edit-condition-group" hidden>
                 <label class="form-label" for="edit-condition">État physique <span class="required">*</span></label>
                 <select class="form-input" id="edit-condition">
-                    <option value="mint">Parfait (Mint)</option>
-                    <option value="near_mint">Quasi parfait (Near Mint)</option>
+                    <option value="mint">Neuf - Sous blister</option>
+                    <option value="near_mint">Neuf</option>
                     <option value="very_good">Très bon état</option>
                     <option value="good">Bon état</option>
                     <option value="acceptable">État acceptable</option>

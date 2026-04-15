@@ -103,19 +103,7 @@
     margin-bottom: .875rem;
 }
 
-.platform-badge {
-    display: inline-flex;
-    align-items: center;
-    padding: .25rem .625rem;
-    border-radius: 999px;
-    font-size: .75rem;
-    font-weight: 600;
-    background: rgba(124, 58, 237, .18);
-    border: 1px solid rgba(124, 58, 237, .35);
-    color: var(--accent-3);
-    white-space: nowrap;
-    letter-spacing: .02em;
-}
+/* Badges plateformes: désormais via `platform-badges.css` (.platform-badge + variantes) */
 
 .game-hero__title {
     font-family: 'Outfit', sans-serif;
@@ -597,14 +585,31 @@ a.game-version-card:focus-visible {
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
-    position: sticky;
-    top: 80px;
+    /* Sert de placeholder dans la grille (garde la colonne à 340px). */
+    position: relative;
+    align-self: start;
+}
+
+/* Desktop : on passe en fixed uniquement après le hero (via JS -> .is-fixed) */
+.game-sidebar__inner {
+    position: relative;
+}
+
+@media (min-width: 769px) {
+    .game-sidebar.is-fixed .game-sidebar__inner {
+        position: fixed;
+        top: 80px; /* sous le header fixed (60px) + marge */
+        width: 340px; /* doit matcher la colonne .game-body */
+        max-height: calc(100vh - 92px);
+        overflow: auto;
+    }
 }
 
 .game-info-box {
     background: var(--bg-2);
     border: 1.5px solid var(--border);
     border-radius: var(--radius-lg);
+    margin-bottom: 1rem;
     padding: 1.25rem 1.375rem;
 }
 
@@ -682,16 +687,7 @@ a.game-version-card:focus-visible {
     justify-content: space-between;
     gap: .5rem;
 }
-.release-entry__platform {
-    font-size: .8rem;
-    font-weight: 600;
-    color: var(--accent-3);
-    background: rgba(124,58,237,.12);
-    padding: .15rem .5rem;
-    border-radius: 999px;
-    border: 1px solid rgba(124,58,237,.25);
-    white-space: nowrap;
-}
+/* Platforms in release entries use `.platform-badge platform-badge--xs` now */
 .release-entry__date {
     font-size: .8rem;
     color: var(--text-3);

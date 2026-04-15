@@ -509,14 +509,7 @@
     gap: .3rem;
     margin-bottom: .3rem;
 }
-.col-card__platform {
-    font-size: .7rem;
-    font-weight: 600;
-    color: var(--accent-3);
-    background: rgba(124,58,237,.12);
-    padding: .1rem .4rem;
-    border-radius: 4px;
-}
+/* Plateforme: désormais via `.platform-badge platform-badge--xs` (platform-badges.css) */
 .col-card__region {
     font-size: .7rem;
     font-weight: 500;

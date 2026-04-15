@@ -226,6 +226,32 @@ APICALYPSE;
         return null;
     }
 
+    /**
+     * Normalise un champ IGDB "id or object" en int.
+     * Exemple: parent_game peut être int, string num, ou {id: ...}.
+     */
+    private function extractId(mixed $val): ?int
+    {
+        if (is_int($val)) {
+            return $val > 0 ? $val : null;
+        }
+        if (is_string($val) && ctype_digit($val)) {
+            $n = (int) $val;
+            return $n > 0 ? $n : null;
+        }
+        if (is_array($val)) {
+            $id = $val['id'] ?? null;
+            if (is_int($id)) {
+                return $id > 0 ? $id : null;
+            }
+            if (is_string($id) && ctype_digit($id)) {
+                $n = (int) $id;
+                return $n > 0 ? $n : null;
+            }
+        }
+        return null;
+    }
+
     public function __construct()
     {
         $this->igdb        = new IgdbClient();
@@ -457,6 +483,11 @@ APICALYPSE;
                     'release_date'      => isset($g['first_release_date']) ? date('Y-m-d', (int) $g['first_release_date']) : null,
                     'developer'         => $developer,
                     'publisher'         => $publisher,
+                    // Champs scalaires légers pour filtrer DLC/expansions sans stocker le JSON IGDB complet.
+                    // IGDB category: 0=main_game, 1=dlc_addon, 2=expansion, 4=standalone_expansion, 13=pack, etc.
+                    'igdb_category'     => isset($g['category']) && is_numeric($g['category']) ? (int) $g['category'] : 0,
+                    // IGDB parent_game: si présent, c'est un dérivé (DLC/expansion/etc.) d'un jeu "parent".
+                    'parent_game_igdb_id' => $this->extractId($g['parent_game'] ?? null),
                     // IMPORTANT: colonnes JSONB côté Postgres → envoyer des tableaux, pas des strings JSON.
                     // Sinon Postgres stocke une "string JSON" au lieu d'un vrai JSONB, ce qui casse les filtres (cs/@>).
                     'genres'            => array_values($genres),
@@ -464,10 +495,10 @@ APICALYPSE;
                     'videos'            => $videos,
                     // platform_ids (integer[]) est géré automatiquement par le trigger
                     // trg_sync_platform_ids (migration 005) après upsert de game_platforms.
-                    'accessories'       => '[]',
-                    // Même principe que genres/screenshots : objet JSON, pas une string JSON.
-                    // Sinon Postgres stocke un JSONB « string » et les filtres PostgREST (raw_igdb_data->version_parent) ne matchent jamais.
-                    'raw_igdb_data'     => $g,
+                    'accessories'       => [],
+                    // IMPORTANT: ne pas stocker le payload IGDB complet en base (explose le TOAST).
+                    // On garde seulement des colonnes dédiées (ci-dessus) et, si besoin, on peut enrichir ailleurs.
+                    'raw_igdb_data'     => null,
                     // IMPORTANT PERF: colonne dédiée (indexable) pour retrouver rapidement les éditions
                     // liées à un jeu de base, sans WHERE sur JSONB.
                     'version_parent_igdb_id' => $this->extractVersionParentIgdbId($g['version_parent'] ?? null),

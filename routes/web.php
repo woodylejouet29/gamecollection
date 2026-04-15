@@ -56,6 +56,7 @@ $router->get('/collection',                    [App\Controllers\CollectionContro
 $router->patch('/api/collection/update',       [App\Controllers\Api\CollectionApiController::class, 'update']);
 $router->delete('/api/collection/delete',      [App\Controllers\Api\CollectionApiController::class, 'delete']);
 $router->get('/api/collection/export',         [App\Controllers\Api\CollectionApiController::class, 'export']);
+$router->get('/api/collection/export-xlsx-by-platform', [App\Controllers\Api\CollectionApiController::class, 'exportByPlatformXlsx']);
 
 // $router->get('/wishlist',    [App\Controllers\WishlistController::class, 'index']);
 // $router->get('/agenda',      [App\Controllers\AgendaController::class, 'index']);

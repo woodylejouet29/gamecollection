@@ -18,8 +18,20 @@ use App\Data\GenreTranslations;
 $filterOptions = $filterOptions ?? [];
 $activeFilters = $activeFilters ?? $_GET;
 
-// Retirer "page" des filtres actifs pour ne pas polluer les tags
+// Retirer "page" et "sort" des filtres actifs pour ne pas polluer les tags
 $displayFilters = array_diff_key($activeFilters, ['page' => '', 'sort' => '']);
+
+// Ne compter/afficher que les valeurs réellement actives
+$displayFilters = array_filter($displayFilters, static function ($v): bool {
+    if ($v === null || $v === '' || $v === 0 || $v === '0') {
+        return false;
+    }
+    if (is_array($v)) {
+        $vals = array_values(array_filter($v, static fn($x) => !($x === null || $x === '' || $x === 0 || $x === '0')));
+        return count($vals) > 0;
+    }
+    return true;
+});
 
 // Libellés lisibles pour les tags actifs
 $filterLabels = [

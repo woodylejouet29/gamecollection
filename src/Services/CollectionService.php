@@ -106,7 +106,15 @@ class CollectionService
         $body   = json_decode((string) $res->getBody(), true);
 
         if ($status === 201 && is_array($body) && !empty($body)) {
-            return ['success' => true, 'id' => (int) $body[0]['id']];
+            $entryId = (int) $body[0]['id'];
+
+            // Photos (optionnel) : max 3 URLs, uniquement si jeu physique
+            $photoUrls = $entry['photo_urls'] ?? [];
+            if (is_array($photoUrls) && !empty($photoUrls)) {
+                $this->insertCollectionPhotos($entryId, $photoUrls);
+            }
+
+            return ['success' => true, 'id' => $entryId];
         }
 
         if ($status === 409) {
@@ -202,5 +210,56 @@ class CollectionService
             'Content-Type'  => 'application/json',
             'Prefer'        => 'return=representation',
         ];
+    }
+
+    /**
+     * Insère jusqu'à 3 photos pour une entrée (collection_photos).
+     * Non bloquant : en cas d'échec, l'entrée reste créée.
+     *
+     * @param list<string> $urls
+     */
+    private function insertCollectionPhotos(int $entryId, array $urls): void
+    {
+        $rows = [];
+        $seen = [];
+        $order = 0;
+        foreach ($urls as $u) {
+            if ($order >= 3) break;
+            $u = trim((string) $u);
+            if ($u === '') continue;
+            if (isset($seen[$u])) continue;
+            $seen[$u] = true;
+
+            $rows[] = [
+                'entry_id'       => $entryId,
+                'url'            => $u,
+                'display_order'  => $order,
+            ];
+            $order++;
+        }
+        if (empty($rows)) return;
+
+        try {
+            $res = $this->http->post(
+                $this->supabaseUrl . '/rest/v1/collection_photos',
+                [
+                    'headers' => array_merge($this->headers(), ['Prefer' => 'return=minimal']),
+                    'json'    => $rows,
+                ]
+            );
+            $status = (int) $res->getStatusCode();
+            if ($status >= 400) {
+                Logger::warning('CollectionService::insertCollectionPhotos Supabase error', [
+                    'status' => $status,
+                    'entry_id' => $entryId,
+                    'body' => mb_substr((string) $res->getBody(), 0, 600),
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Logger::warning('CollectionService::insertCollectionPhotos failed', [
+                'entry_id' => $entryId,
+                'error'    => $e->getMessage(),
+            ]);
+        }
     }
 }

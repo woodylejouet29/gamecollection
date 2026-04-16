@@ -232,6 +232,34 @@
 })();
 
 // ──────────────────────────────────────────────
+//  HeaderProfileMenu — dropdown "Mon profil"
+// ──────────────────────────────────────────────
+
+(function HeaderProfileMenu() {
+  const menu = document.getElementById('header-profile-menu');
+  if (!menu) return;
+
+  // Fermer au clic extérieur
+  document.addEventListener('click', (e) => {
+    if (!menu.open) return;
+    if (e.target.closest('#header-profile-menu')) return;
+    menu.open = false;
+  });
+
+  // Fermer sur Escape (sans interférer avec le drawer)
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && menu.open) {
+      menu.open = false;
+    }
+  });
+
+  // Fermer après clic sur un item
+  menu.querySelectorAll('a').forEach(a => {
+    a.addEventListener('click', () => { menu.open = false; });
+  });
+})();
+
+// ──────────────────────────────────────────────
 //  Utilitaires cookies
 // ──────────────────────────────────────────────
 

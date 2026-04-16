@@ -199,31 +199,155 @@ function fmtDate(?string $date): string {
 
 <?php endif; // end invité ?>
 
+<div class="home-columns">
+    <!-- ═══════════════════════════════════════════════════════
+         MIEUX NOTÉS (ANNÉE EN COURS)
+    ═══════════════════════════════════════════════════════ -->
+    <section class="home-section home-section--col">
+        <div class="container">
+            <div class="home-section__header">
+                <h2 class="home-section__title">Mieux notés</h2>
+                <a href="/search?sort=rating" class="home-section__link">Voir tout →</a>
+            </div>
 
-<!-- ═══════════════════════════════════════════════════════
-     MIEUX NOTÉS (ANNÉE EN COURS)
-═══════════════════════════════════════════════════════ -->
-<section class="home-section">
-    <div class="container">
-        <div class="home-section__header">
-            <h2 class="home-section__title">Mieux notés</h2>
-            <a href="/search?sort=rating" class="home-section__link">Voir tout →</a>
+            <?php if (!empty($topRatedGames)): ?>
+            <div class="games-scroll-wrapper">
+                <button class="games-scroll-nav games-scroll-nav--prev is-hidden" aria-label="Précédent">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+                </button>
+                <div class="games-scroll">
+                    <div class="games-scroll__track">
+                        <?php foreach ($topRatedGames as $g):
+                            $src = coverSrc($g['cover_url'] ?? null);
+                        ?>
+                        <a href="/game/<?= htmlspecialchars($g['slug'] ?? '') ?>"
+                           class="game-card-mini"
+                           title="<?= htmlspecialchars($g['title'] ?? '') ?>">
+                            <div class="game-card-mini__cover">
+                                <div class="game-card-mini__cover-placeholder" aria-hidden="true">
+                                    <?= htmlspecialchars(mb_substr($g['title'] ?? '?', 0, 30)) ?>
+                                </div>
+                                <?php if ($src): ?>
+                                    <img src="<?= htmlspecialchars($src) ?>"
+                                         alt="<?= htmlspecialchars($g['title'] ?? '') ?>"
+                                         loading="lazy"
+                                         width="130" height="170"
+                                         onerror="this.style.display='none'">
+                                <?php endif; ?>
+                                <?php if (!empty($g['igdb_rating'])): ?>
+                                    <span class="game-card-mini__rating" style="z-index:2;position:relative"><?= round((float)$g['igdb_rating']) ?></span>
+                                <?php endif; ?>
+                            </div>
+                            <div class="game-card-mini__info">
+                                <span class="game-card-mini__title"><?= htmlspecialchars($g['title'] ?? '') ?></span>
+                            </div>
+                        </a>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+                <button class="games-scroll-nav games-scroll-nav--next" aria-label="Suivant">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+                </button>
+            </div>
+            <?php else: ?>
+            <div class="home-empty">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+                Aucun jeu synchronisé pour l'instant.
+            </div>
+            <?php endif; ?>
         </div>
+    </section>
 
-        <?php if (!empty($topRatedGames)): ?>
-        <div class="games-scroll-wrapper">
-            <button class="games-scroll-nav games-scroll-nav--prev is-hidden" aria-label="Précédent">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
-            </button>
-            <div class="games-scroll">
-                <div class="games-scroll__track">
-                    <?php foreach ($topRatedGames as $g):
+    <!-- ═══════════════════════════════════════════════════════
+         ÇA SORT AUJOURD'HUI
+    ═══════════════════════════════════════════════════════ -->
+    <section class="home-section home-section--col">
+        <div class="container">
+            <div class="home-section__header">
+                <h2 class="home-section__title">Ça sort aujourd’hui</h2>
+                <a href="/search?sort=upcoming" class="home-section__link">Voir tout →</a>
+            </div>
+
+            <?php if (!empty($todayGames)): ?>
+            <div class="games-scroll-wrapper">
+                <button class="games-scroll-nav games-scroll-nav--prev is-hidden" aria-label="Précédent">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+                </button>
+                <div class="games-scroll">
+                    <div class="games-scroll__track">
+                        <?php foreach ($todayGames as $g):
+                            $src = coverSrc($g['cover_url'] ?? null);
+                        ?>
+                        <a href="/game/<?= htmlspecialchars($g['slug'] ?? '') ?>"
+                           class="game-card-mini"
+                           title="<?= htmlspecialchars($g['title'] ?? '') ?>">
+                            <div class="game-card-mini__cover">
+                                <div class="game-card-mini__cover-placeholder" aria-hidden="true">
+                                    <?= htmlspecialchars(mb_substr($g['title'] ?? '?', 0, 30)) ?>
+                                </div>
+                                <?php if ($src): ?>
+                                    <img src="<?= htmlspecialchars($src) ?>"
+                                         alt="<?= htmlspecialchars($g['title'] ?? '') ?>"
+                                         loading="lazy"
+                                         width="130" height="170"
+                                         onerror="this.style.display='none'">
+                                <?php endif; ?>
+                            </div>
+                            <div class="game-card-mini__info">
+                                <span class="game-card-mini__title"><?= htmlspecialchars($g['title'] ?? '') ?></span>
+                            </div>
+                        </a>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+                <button class="games-scroll-nav games-scroll-nav--next" aria-label="Suivant">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+                </button>
+            </div>
+            <?php else: ?>
+            <div class="home-empty">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg>
+                Aucun jeu ne sort aujourd’hui (selon la date de sortie IGDB).
+            </div>
+            <?php endif; ?>
+        </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════
+         POPULAIRES PAR GENRE
+    ═══════════════════════════════════════════════════════ -->
+    <?php if (!empty($genreHighlights)): ?>
+    <section class="home-section home-section--col genre-section">
+        <div class="container">
+            <div class="home-section__header">
+                <h2 class="home-section__title">Populaires par genre</h2>
+                <a href="/search?order=igdb_rating.desc" class="home-section__link">Voir tout →</a>
+            </div>
+
+            <div class="genre-tabs" role="tablist">
+                <?php $first = true; foreach ($genreHighlights as $genre => $games): ?>
+                <button class="genre-tab<?= $first ? ' is-active' : '' ?>"
+                        role="tab"
+                        aria-selected="<?= $first ? 'true' : 'false' ?>"
+                        aria-controls="genre-<?= htmlspecialchars(str_replace(' ', '-', strtolower($genre))) ?>"
+                        data-target="genre-<?= htmlspecialchars(str_replace(' ', '-', strtolower($genre))) ?>">
+                    <?= htmlspecialchars($genre) ?>
+                </button>
+                <?php $first = false; endforeach; ?>
+            </div>
+
+            <?php $first = true; foreach ($genreHighlights as $genre => $games): ?>
+            <div class="genre-panel<?= $first ? ' is-active' : '' ?>"
+                 id="genre-<?= htmlspecialchars(str_replace(' ', '-', strtolower($genre))) ?>"
+                 role="tabpanel">
+                <div class="genre-panel__grid">
+                    <?php foreach (array_slice($games, 0, 6) as $g):
                         $src = coverSrc($g['cover_url'] ?? null);
                     ?>
                     <a href="/game/<?= htmlspecialchars($g['slug'] ?? '') ?>"
-                       class="game-card-mini"
+                       class="game-card-genre"
                        title="<?= htmlspecialchars($g['title'] ?? '') ?>">
-                        <div class="game-card-mini__cover">
+                        <div class="game-card-genre__cover">
                             <div class="game-card-mini__cover-placeholder" aria-hidden="true">
                                 <?= htmlspecialchars(mb_substr($g['title'] ?? '?', 0, 30)) ?>
                             </div>
@@ -231,184 +355,58 @@ function fmtDate(?string $date): string {
                                 <img src="<?= htmlspecialchars($src) ?>"
                                      alt="<?= htmlspecialchars($g['title'] ?? '') ?>"
                                      loading="lazy"
-                                     width="130" height="170"
                                      onerror="this.style.display='none'">
                             <?php endif; ?>
                             <?php if (!empty($g['igdb_rating'])): ?>
-                                <span class="game-card-mini__rating" style="z-index:2;position:relative"><?= round((float)$g['igdb_rating']) ?></span>
+                                <span class="game-card-genre__rating" style="z-index:2;position:relative"><?= round((float)$g['igdb_rating']) ?></span>
                             <?php endif; ?>
                         </div>
-                        <div class="game-card-mini__info">
-                            <span class="game-card-mini__title"><?= htmlspecialchars($g['title'] ?? '') ?></span>
-                        </div>
+                        <span class="game-card-genre__title"><?= htmlspecialchars($g['title'] ?? '') ?></span>
                     </a>
                     <?php endforeach; ?>
                 </div>
             </div>
-            <button class="games-scroll-nav games-scroll-nav--next" aria-label="Suivant">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
-            </button>
-        </div>
-        <?php else: ?>
-        <div class="home-empty">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-            Aucun jeu synchronisé pour l'instant.
-        </div>
-        <?php endif; ?>
-    </div>
-</section>
-
-
-<!-- ═══════════════════════════════════════════════════════
-     ÇA SORT AUJOURD'HUI
-═══════════════════════════════════════════════════════ -->
-<section class="home-section">
-    <div class="container">
-        <div class="home-section__header">
-            <h2 class="home-section__title">Ça sort aujourd’hui</h2>
-            <a href="/search?sort=upcoming" class="home-section__link">Voir tout →</a>
-        </div>
-
-        <?php if (!empty($todayGames)): ?>
-        <div class="games-scroll-wrapper">
-            <button class="games-scroll-nav games-scroll-nav--prev is-hidden" aria-label="Précédent">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
-            </button>
-            <div class="games-scroll">
-                <div class="games-scroll__track">
-                    <?php foreach ($todayGames as $g):
-                        $src = coverSrc($g['cover_url'] ?? null);
-                    ?>
-                    <a href="/game/<?= htmlspecialchars($g['slug'] ?? '') ?>"
-                       class="game-card-mini"
-                       title="<?= htmlspecialchars($g['title'] ?? '') ?>">
-                        <div class="game-card-mini__cover">
-                            <div class="game-card-mini__cover-placeholder" aria-hidden="true">
-                                <?= htmlspecialchars(mb_substr($g['title'] ?? '?', 0, 30)) ?>
-                            </div>
-                            <?php if ($src): ?>
-                                <img src="<?= htmlspecialchars($src) ?>"
-                                     alt="<?= htmlspecialchars($g['title'] ?? '') ?>"
-                                     loading="lazy"
-                                     width="130" height="170"
-                                     onerror="this.style.display='none'">
-                            <?php endif; ?>
-                        </div>
-                        <div class="game-card-mini__info">
-                            <span class="game-card-mini__title"><?= htmlspecialchars($g['title'] ?? '') ?></span>
-                        </div>
-                    </a>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-            <button class="games-scroll-nav games-scroll-nav--next" aria-label="Suivant">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
-            </button>
-        </div>
-        <?php else: ?>
-        <div class="home-empty">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg>
-            Aucun jeu ne sort aujourd’hui (selon la date de sortie IGDB).
-        </div>
-        <?php endif; ?>
-    </div>
-</section>
-
-
-<!-- ═══════════════════════════════════════════════════════
-     POPULAIRES PAR GENRE
-═══════════════════════════════════════════════════════ -->
-<?php if (!empty($genreHighlights)): ?>
-<section class="home-section genre-section">
-    <div class="container">
-        <div class="home-section__header">
-            <h2 class="home-section__title">Populaires par genre</h2>
-            <a href="/search?order=igdb_rating.desc" class="home-section__link">Voir tout →</a>
-        </div>
-
-        <div class="genre-tabs" role="tablist">
-            <?php $first = true; foreach ($genreHighlights as $genre => $games): ?>
-            <button class="genre-tab<?= $first ? ' is-active' : '' ?>"
-                    role="tab"
-                    aria-selected="<?= $first ? 'true' : 'false' ?>"
-                    aria-controls="genre-<?= htmlspecialchars(str_replace(' ', '-', strtolower($genre))) ?>"
-                    data-target="genre-<?= htmlspecialchars(str_replace(' ', '-', strtolower($genre))) ?>">
-                <?= htmlspecialchars($genre) ?>
-            </button>
             <?php $first = false; endforeach; ?>
-        </div>
 
-        <?php $first = true; foreach ($genreHighlights as $genre => $games): ?>
-        <div class="genre-panel<?= $first ? ' is-active' : '' ?>"
-             id="genre-<?= htmlspecialchars(str_replace(' ', '-', strtolower($genre))) ?>"
-             role="tabpanel">
-            <div class="genre-panel__grid">
-                <?php foreach ($games as $g):
-                    $src = coverSrc($g['cover_url'] ?? null);
-                ?>
-                <a href="/game/<?= htmlspecialchars($g['slug'] ?? '') ?>"
-                   class="game-card-genre"
-                   title="<?= htmlspecialchars($g['title'] ?? '') ?>">
-                    <div class="game-card-genre__cover">
-                        <div class="game-card-mini__cover-placeholder" aria-hidden="true">
-                            <?= htmlspecialchars(mb_substr($g['title'] ?? '?', 0, 30)) ?>
-                        </div>
-                        <?php if ($src): ?>
-                            <img src="<?= htmlspecialchars($src) ?>"
-                                 alt="<?= htmlspecialchars($g['title'] ?? '') ?>"
-                                 loading="lazy"
-                                 onerror="this.style.display='none'">
-                        <?php endif; ?>
-                        <?php if (!empty($g['igdb_rating'])): ?>
-                            <span class="game-card-genre__rating" style="z-index:2;position:relative"><?= round((float)$g['igdb_rating']) ?></span>
-                        <?php endif; ?>
-                    </div>
-                    <span class="game-card-genre__title"><?= htmlspecialchars($g['title'] ?? '') ?></span>
+        </div>
+    </section>
+    <?php endif; ?>
+
+    <!-- ═══════════════════════════════════════════════════════
+         PLATEFORMES
+    ═══════════════════════════════════════════════════════ -->
+    <?php if (!empty($topPlatforms)): ?>
+    <section class="home-section home-section--col">
+        <div class="container">
+            <div class="home-section__header">
+                <h2 class="home-section__title">Parcourir par plateforme</h2>
+                <a href="/search" class="home-section__link">Toutes les plateformes →</a>
+            </div>
+
+            <div class="platform-grid">
+                <?php foreach ($topPlatforms as $p): ?>
+                <a href="/search?platform=<?= (int)($p['id'] ?? 0) ?>"
+                   class="platform-card"
+                   title="<?= htmlspecialchars($p['name'] ?? '') ?>">
+                    <?php if (!empty($p['logo_url'])): ?>
+                        <img src="<?= htmlspecialchars(coverSrc($p['logo_url'])) ?>"
+                             alt="<?= htmlspecialchars($p['abbreviation'] ?? $p['name'] ?? '') ?>"
+                             class="platform-card__logo"
+                             loading="lazy"
+                             height="36">
+                    <?php else: ?>
+                        <span class="platform-card__abbr">
+                            <?= htmlspecialchars(mb_strtoupper(mb_substr($p['abbreviation'] ?? $p['name'] ?? '?', 0, 4))) ?>
+                        </span>
+                    <?php endif; ?>
+                    <span><?= htmlspecialchars($p['abbreviation'] ?? $p['name'] ?? '') ?></span>
                 </a>
                 <?php endforeach; ?>
             </div>
         </div>
-        <?php $first = false; endforeach; ?>
-
-    </div>
-</section>
-<?php endif; ?>
-
-
-<!-- ═══════════════════════════════════════════════════════
-     PLATEFORMES
-═══════════════════════════════════════════════════════ -->
-<?php if (!empty($topPlatforms)): ?>
-<section class="home-section">
-    <div class="container">
-        <div class="home-section__header">
-            <h2 class="home-section__title">Parcourir par plateforme</h2>
-            <a href="/search" class="home-section__link">Toutes les plateformes →</a>
-        </div>
-
-        <div class="platform-grid">
-            <?php foreach ($topPlatforms as $p): ?>
-            <a href="/search?platform=<?= (int)($p['id'] ?? 0) ?>"
-               class="platform-card"
-               title="<?= htmlspecialchars($p['name'] ?? '') ?>">
-                <?php if (!empty($p['logo_url'])): ?>
-                    <img src="<?= htmlspecialchars(coverSrc($p['logo_url'])) ?>"
-                         alt="<?= htmlspecialchars($p['abbreviation'] ?? $p['name'] ?? '') ?>"
-                         class="platform-card__logo"
-                         loading="lazy"
-                         height="36">
-                <?php else: ?>
-                    <span class="platform-card__abbr">
-                        <?= htmlspecialchars(mb_strtoupper(mb_substr($p['abbreviation'] ?? $p['name'] ?? '?', 0, 4))) ?>
-                    </span>
-                <?php endif; ?>
-                <span><?= htmlspecialchars($p['abbreviation'] ?? $p['name'] ?? '') ?></span>
-            </a>
-            <?php endforeach; ?>
-        </div>
-    </div>
-</section>
-<?php endif; ?>
+    </section>
+    <?php endif; ?>
+</div>
 
 
 <!-- ═══════════════════════════════════════════════════════

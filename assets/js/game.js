@@ -156,7 +156,6 @@
     //  Lightbox galerie
     // ─────────────────────────────────────────────────────────────
 
-    const gallery     = document.getElementById('game-gallery');
     const lightbox    = document.getElementById('lightbox');
     const lbImg       = document.getElementById('lightbox-img');
     const lbCounter   = document.getElementById('lightbox-counter');
@@ -191,15 +190,15 @@
         lbClose?.focus();
     }
 
-    if (gallery) {
-        lbThumbs = Array.from(gallery.querySelectorAll('.game-gallery__thumb'));
-
-        gallery.addEventListener('click', (e) => {
+    document.querySelectorAll('[data-lightbox-gallery]').forEach((galleryEl) => {
+        galleryEl.addEventListener('click', (e) => {
             const btn = e.target.closest('.game-gallery__thumb');
             if (!btn) return;
+
+            lbThumbs = Array.from(galleryEl.querySelectorAll('.game-gallery__thumb'));
             lbShow(parseInt(btn.dataset.index, 10) || 0);
         });
-    }
+    });
 
     lbClose?.addEventListener('click',   () => closeOverlay(lightbox));
     lbBackdrop?.addEventListener('click', () => closeOverlay(lightbox));

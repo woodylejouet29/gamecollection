@@ -49,7 +49,7 @@ class HomeService
             'topRatedGames'   => $this->cached('top_rated_year', fn() => $this->fetchTopRatedThisYear(), 21600, 259200, 'top_rated_year_' . date('Y')), // 6h fresh, 72h stale
             'todayGames'      => $this->cached('today_games', fn() => $this->fetchTodayGames(), 600, 21600, 'today_games_' . date('Y-m-d')), // 10m fresh, 6h stale
             'latestReviews'   => $this->cached('latest_reviews', fn() => $this->fetchLatestReviews(), 120, 1800),
-            'genreHighlights' => $this->cached('genre_highlights', fn() => $this->fetchGenreHighlights(), 43200, 259200, 'genre_highlights_v1'), // 12h fresh, 72h stale
+            'genreHighlights' => $this->cached('genre_highlights', fn() => $this->fetchGenreHighlights(), 43200, 259200, 'genre_highlights_v2'), // 12h fresh, 72h stale
             'topPlatforms'    => $this->cached('top_platforms', fn() => $this->fetchTopPlatforms(), 86400, 604800),
             'stats'           => $this->cached('stats', fn() => $this->fetchStats(), 1800, 21600),
         ];
@@ -112,7 +112,7 @@ class HomeService
 
     /**
      * Top 120 jeux notés ≥ 72, groupés par premier genre.
-     * Retourne un tableau associatif [genre => [game, ...]] (max 6 genres × 8 jeux).
+     * Retourne un tableau associatif [genre => [game, ...]] (max 6 genres × 6 jeux).
      */
     private function fetchGenreHighlights(): array
     {
@@ -130,7 +130,7 @@ class HomeService
                 continue;
             }
             $byGenre[$first]   ??= [];
-            if (count($byGenre[$first]) < 8) {
+            if (count($byGenre[$first]) < 6) {
                 $byGenre[$first][] = $g;
             }
         }

@@ -1,0 +1,287 @@
+/* ================================================================
+   user.css — Page /user/{slug}  (mobile-first, refonte compacte)
+   ================================================================ */
+
+/* ── Hero ────────────────────────────────────────────────────── */
+.user-hero {
+  padding: 1.75rem 0 1.25rem;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(124,58,237,.07), transparent);
+}
+
+.user-hero__row {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+.user-hero__avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid rgba(124,58,237,.3);
+  background: var(--bg-2);
+}
+
+.user-hero__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.user-hero__placeholder {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  font-size: 1.75rem;
+  font-weight: 900;
+  color: #fff;
+  background: var(--grad);
+}
+
+.user-hero__name {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.user-hero__bio {
+  margin: .3rem 0 0;
+  font-size: .875rem;
+  color: var(--text-2);
+  max-width: 70ch;
+}
+.user-hero__bio--dim { color: var(--text-3); }
+
+.user-hero__side { grid-column: 1 / -1; }
+
+.user-hero__chips { margin-top: .7rem; display: grid; gap: .4rem; }
+.user-chip-group  { display: flex; flex-wrap: wrap; gap: .35rem; }
+.user-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: .2rem .55rem;
+  border-radius: 999px;
+  background: rgba(124,58,237,.09);
+  border: 1px solid rgba(124,58,237,.16);
+  font-size: .78rem;
+  color: var(--text-2);
+}
+.user-chip--dim { opacity: .85; }
+
+/* ── Content ─────────────────────────────────────────────────── */
+.user-content {
+  padding: 1rem 1rem 3.5rem;
+}
+
+/* ── Stats ───────────────────────────────────────────────────── */
+.user-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: .6rem;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: .85rem;
+  box-shadow: var(--shadow-glow);
+}
+
+.user-stat { text-align: center; }
+.user-stat__val { display: block; font-weight: 900; font-size: 1rem; }
+.user-stat__lbl { display: block; margin-top: .1rem; font-size: .78rem; color: var(--text-3); }
+.user-stat--sep  { display: none; }
+
+/* ── Sections ────────────────────────────────────────────────── */
+.user-section { margin-top: 1rem; }
+.user-section__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .75rem;
+  margin: .6rem 0;
+}
+.user-section__title { margin: 0; font-size: .92rem; font-weight: 900; }
+.user-section__sub   { margin: 0; color: var(--text-3); font-size: .8rem; }
+
+/* ── Reviews ─────────────────────────────────────────────────── */
+.user-reviews { display: grid; gap: .65rem; }
+
+.user-review {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: .65rem;
+  padding: .8rem;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.user-review__cover {
+  width: 48px;
+  height: 64px;
+  border-radius: 9px;
+  overflow: hidden;
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.06);
+}
+.user-review__cover img { width:100%; height:100%; object-fit:cover; display:block; }
+.user-review__cover-ph  { display:block; width:100%; height:100%; background: radial-gradient(80% 60% at 30% 10%, rgba(124,58,237,.25), transparent); }
+
+.user-review__top   { display:flex; align-items:baseline; justify-content:space-between; gap:.6rem; }
+.user-review__game  { font-weight:900; font-size:.88rem; }
+.user-review__rating{ font-weight:900; color:var(--accent-2); font-size:.88rem; }
+.user-review__text  { margin:.25rem 0 .35rem; font-size:.85rem; color:var(--text-2); }
+.user-review__date  { font-size:.78rem; color:var(--text-3); }
+
+/* ── Collection cards ────────────────────────────────────────── */
+.user-col-card {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-glow);
+}
+.user-col-card__cover          { display:block; aspect-ratio:3/4; background:rgba(255,255,255,.02); position:relative; }
+.user-col-card__cover img      { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+.user-col-card__ph             { position:absolute; inset:0; background:radial-gradient(80% 60% at 30% 10%, rgba(124,58,237,.25), transparent); }
+.user-col-card__body           { padding:.75rem .75rem .9rem; }
+.user-col-card__title          { font-weight:900; font-size:.88rem; }
+.user-col-card__title a        { color:var(--text); text-decoration:none; }
+.user-col-card__title a:hover  { color:var(--accent-2); }
+.user-col-card__meta           { display:block; margin-top:.3rem; font-size:.78rem; color:var(--text-3); }
+
+/* ── Mode liste ──────────────────────────────────────────────── */
+.game-grid--list .user-col-card {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .55rem .75rem;
+  border-radius: var(--radius);
+}
+.game-grid--list .user-col-card__cover {
+  width: 52px;
+  min-width: 52px;
+  height: 70px;
+  aspect-ratio: auto;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.game-grid--list .user-col-card__body { padding:0; flex:1; min-width:0; }
+.game-grid--list .user-col-card__meta { margin-top:.2rem; }
+
+/* ── Privé / vide ────────────────────────────────────────────── */
+.user-private {
+  margin-top: 1rem;
+  padding: 1.75rem 1rem;
+  border: 1px dashed rgba(124,58,237,.3);
+  border-radius: var(--radius-lg);
+  background: rgba(124,58,237,.04);
+  text-align: center;
+}
+.user-private__icon svg  { width:42px; height:42px; color:var(--accent-2); opacity:.9; }
+.user-private__title     { margin:.6rem 0 .2rem; font-size:1rem; }
+.user-private__desc      { margin:0; color:var(--text-3); font-size:.875rem; }
+
+.user-empty {
+  padding: 1rem;
+  color: var(--text-3);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  font-size: .875rem;
+}
+
+/* ================================================================
+   TABLET  ≥ 640px
+   ================================================================ */
+@media (min-width: 640px) {
+  .user-stats { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* ================================================================
+   TABLET  ≥ 768px
+   ================================================================ */
+@media (min-width: 768px) {
+  .user-hero { padding: 1.25rem 0 .9rem; }
+  .user-hero__row { grid-template-columns: 60px 1fr auto; gap: .85rem; align-items: center; }
+  .user-hero__side { grid-column: auto; }
+  .user-hero__avatar { width:60px; height:60px; }
+  .user-hero__placeholder { font-size:1.4rem; }
+  .user-hero__name { font-size:1.15rem; }
+  .user-hero__bio  { font-size:.82rem; margin-top:.2rem; }
+  .user-hero__chips { margin-top:.45rem; gap:.35rem; }
+  .user-chip-group  { gap:.3rem; }
+  .user-chip { font-size:.74rem; padding:.18rem .48rem; }
+
+  .user-content { padding:.85rem 1rem 2.5rem; }
+
+  .user-stats  { gap:.5rem; padding:.7rem; }
+  .user-stat__val { font-size:.92rem; }
+  .user-stat__lbl { font-size:.74rem; }
+
+  .user-section { margin-top:.85rem; }
+  .user-section__head { margin:.45rem 0; gap:.6rem; }
+  .user-section__title { font-size:.88rem; }
+  .user-section__sub   { font-size:.76rem; }
+
+  .user-reviews { gap:.5rem; }
+  .user-review  { grid-template-columns:44px 1fr; gap:.55rem; padding:.65rem; }
+  .user-review__cover  { width:44px; height:58px; border-radius:8px; }
+  .user-review__game   { font-size:.84rem; }
+  .user-review__rating { font-size:.84rem; }
+  .user-review__text   { font-size:.82rem; margin:.2rem 0 .3rem; }
+  .user-review__date   { font-size:.74rem; }
+
+  .user-col-card__body  { padding:.65rem .65rem .75rem; }
+  .user-col-card__title { font-size:.84rem; }
+  .user-col-card__meta  { font-size:.74rem; margin-top:.25rem; }
+
+  .game-grid--list .user-col-card        { gap:.6rem; padding:.45rem .65rem; }
+  .game-grid--list .user-col-card__cover { width:48px; min-width:48px; height:64px; border-radius:8px; }
+
+  .user-private        { padding:1.25rem .85rem; }
+  .user-private__icon svg { width:36px; height:36px; }
+  .user-private__title { font-size:.95rem; margin:.5rem 0 .15rem; }
+  .user-private__desc  { font-size:.82rem; }
+
+  .user-empty { padding:.85rem; font-size:.82rem; }
+}
+
+/* ================================================================
+   DESKTOP  ≥ 1024px
+   ================================================================ */
+@media (min-width: 1024px) {
+  .user-hero { padding:1rem 0 .75rem; }
+  .user-hero__row { grid-template-columns:54px 1fr auto; gap:.75rem; }
+  .user-hero__avatar { width:54px; height:54px; }
+  .user-hero__placeholder { font-size:1.25rem; }
+  .user-hero__name  { font-size:1.05rem; }
+  .user-hero__bio   { font-size:.8rem; }
+  .user-hero__chips { margin-top:.35rem; }
+
+  .user-content { padding:.75rem 1rem 2.5rem; }
+
+  .user-stats   { padding:.6rem; gap:.4rem; }
+  .user-stat__val { font-size:.88rem; }
+  .user-stat__lbl { font-size:.72rem; }
+
+  .user-section { margin-top:.75rem; }
+  .user-section__head { margin:.4rem 0; }
+
+  .user-review  { padding:.6rem; gap:.5rem; }
+  .user-review__cover { width:40px; height:54px; border-radius:7px; }
+}
+
+/* ================================================================
+   SMALL MOBILE  ≤ 480px
+   ================================================================ */
+@media (max-width: 480px) {
+  .user-hero__row  { grid-template-columns: 64px 1fr; }
+  .user-hero__avatar { width:64px; height:64px; }
+  .user-hero__side { grid-column: 1 / -1; }
+}

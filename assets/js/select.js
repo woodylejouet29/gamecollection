@@ -912,13 +912,14 @@ function bindCopyEvents(copy, copiesList) {
 
             const res = await fetch('/api/uploads/selection-photo', { method: 'POST', body: fd });
             const json = await res.json().catch(() => ({}));
-            if (!res.ok || !json?.success || !json?.url) throw new Error('upload failed');
+            const url = json?.url || json?.data?.url || '';
+            if (!res.ok || !json?.success || !url) throw new Error('upload failed');
 
             // Met l'URL dans un champ existant vide, sinon crée une nouvelle ligne
             const inputs = Array.from(photosList.querySelectorAll('input[name="photo_url[]"]'));
             const empty = inputs.find(i => i.value.trim() === '');
             if (empty) {
-                empty.value = json.url;
+                empty.value = url;
             } else {
                 if (photosList.querySelectorAll('.sel-photo-input-row').length < 3) {
                     const row  = document.createElement('div');
@@ -926,7 +927,7 @@ function bindCopyEvents(copy, copiesList) {
                     row.innerHTML = `<input class="form-input" type="url" name="photo_url[]" placeholder="https://…">`;
                     photosList.appendChild(row);
                     const input = row.querySelector('input');
-                    if (input) input.value = json.url;
+                    if (input) input.value = url;
                 }
             }
 

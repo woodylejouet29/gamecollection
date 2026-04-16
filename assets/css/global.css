@@ -34,6 +34,10 @@
     --layout-max: 1500px;
 }
 
+@media (min-width: 1024px) {
+    :root { --layout-max: 100%; }
+}
+
 [data-theme="light"] {
     --bg:       #f5f4ff;
     --bg-2:     #eeecff;
@@ -287,105 +291,104 @@ ul, ol { list-style: none; }
     gap: 1.5rem;
 }
 
-/* ── Header — responsive (mobile/tablette) ─────────────────────── */
-@media (max-width: 900px) {
-    .header__inner {
-        max-width: 100%;
-        padding: 0 1rem;
-        gap: 0.9rem;
-    }
-    .header__actions {
-        gap: 0.5rem;
-    }
-    .header__logo-text {
-        font-size: 0.95rem;
-    }
+/* ── Header — responsive (mobile-first) ───────────────────────── */
+
+/* Base mobile : nav cachée, burger visible, profil dans le drawer */
+.header__nav          { display: none; }
+.header__burger       { display: flex; }
+.header__profile-menu { display: none; }
+.header__username     { display: none; }
+.header__actions > .btn { display: none; }
+
+.header__inner {
+    padding: 0 .85rem;
+    gap: .6rem;
+    justify-content: space-between;
+}
+.header__actions {
+    margin-left: auto;
+    gap: .4rem;
 }
 
-@media (max-width: 768px) {
-    .header__inner {
-        max-width: 100%;
-        padding: 0 0.85rem;
-        gap: 0.75rem;
-        justify-content: space-between;
-    }
-
-    /* Sur mobile on retire complètement le bloc user (le drawer affiche le profil) */
-    .header__user { display: none; }
-
-    /* Masquer les boutons texte : accessibles dans le drawer */
-    .header__actions > .btn {
-        display: none;
-    }
-
-    /* Boutons un peu plus compacts */
-    .header__icon-btn,
-    .header__theme-btn,
-    .header__burger {
-        width: 34px;
-        height: 34px;
-    }
-
-    /* Actions bien alignées à droite, sans compression */
-    .header__actions {
-        margin-left: auto;
-        gap: .4rem;
-    }
-
-    /* Ordre cohérent des boutons (icône sélection → thème → menu) */
-    .header__icon-btn { order: 1; }
-    .header__theme-btn { order: 2; }
-    .header__burger { order: 3; }
-
-    /* Rend les boutons plus lisibles sur le dégradé */
-    .header__icon-btn,
-    .header__burger {
-        background: rgba(0,0,0,.08);
-        border: 1px solid rgba(255,255,255,.18);
-        color: var(--text);
-    }
+/* Boutons compacts sur mobile */
+.header__icon-btn,
+.header__theme-btn,
+.header__burger {
+    width: 34px;
+    height: 34px;
 }
 
-/* ── Header — breakpoint tablette (769px → 950px) ───────────────────────────
-   Objectif : éviter le wrap moche en gardant la nav utilisable.
-   - On masque les éléments "texte" (pseudo + bouton Déconnexion)
-   - On compacte la nav et on autorise un scroll horizontal si besoin
-*/
-@media (min-width: 769px) and (max-width: 950px) {
+/* Ordre : sélection → thème → burger */
+.header__icon-btn  { order: 1; }
+.header__theme-btn { order: 2; }
+.header__burger    { order: 3; }
+
+/* Contraste sur le fond dégradé */
+.header__icon-btn,
+.header__burger {
+    background: rgba(0, 0, 0, .08);
+    border: 1px solid rgba(255, 255, 255, .18);
+    color: #fff;
+}
+
+/* Tablette portrait (≥ 640px) : un peu plus d'espace */
+@media (min-width: 640px) {
     .header__inner {
         padding: 0 1rem;
         gap: .75rem;
     }
-
     .header__actions { gap: .5rem; }
-
-    /* Sur tablette on évite les retours à la ligne dans la nav */
-    .header__nav {
-        gap: .15rem;
-        overflow-x: auto;
-        overflow-y: hidden;
-        scrollbar-width: none; /* Firefox */
-    }
-    .header__nav::-webkit-scrollbar { display: none; } /* Chromium/Safari */
-
-    .header__nav-link {
-        white-space: nowrap;
-        padding: .325rem .55rem;
-        font-size: .825rem;
-    }
-
-    /* Avatar only */
-    .header__username { display: none; }
-    .header__user { padding-right: .25rem; }
-
-    /* Bouton "Déconnexion" trop large sur tablette */
-    .header__actions > .btn { display: none; }
 }
 
-@media (max-width: 520px) {
-    .header__logo-text {
-        display: none;
+/* Tablette paysage (769px–950px) : toujours burger, mais avatar profil visible */
+@media (min-width: 769px) and (max-width: 950px) {
+    .header__inner {
+        padding: 0 1.25rem;
+        gap: .75rem;
+        justify-content: space-between;
     }
+    .header__actions {
+        margin-left: auto;
+        gap: .5rem;
+    }
+    .header__icon-btn { order: 1; }
+    .header__theme-btn { order: 2; }
+    .header__burger { order: 3; }
+    .header__icon-btn,
+    .header__burger {
+        background: rgba(0, 0, 0, .08);
+        border: 1px solid rgba(255, 255, 255, .18);
+    }
+}
+
+/* Desktop (≥ 951px) : nav visible, burger masqué, profil complet */
+@media (min-width: 951px) {
+    .header__inner {
+        padding: 0 1.5rem;
+        gap: 1.5rem;
+        justify-content: flex-start;
+    }
+    .header__nav          { display: flex; }
+    .header__burger       { display: none; }
+    .header__profile-menu { display: flex; }
+    .header__actions > .btn { display: inline-flex; }
+    .header__actions {
+        margin-left: auto;
+        gap: .75rem;
+    }
+    .header__icon-btn,
+    .header__theme-btn {
+        width: 36px;
+        height: 36px;
+    }
+    /* Réinitialiser les surcharges mobile */
+    .header__icon-btn {
+        background: none;
+        border: none;
+        order: unset;
+        color: var(--text);
+    }
+    .header__theme-btn { order: unset; }
 }
 
 .header__logo {
@@ -426,22 +429,113 @@ ul, ol { list-style: none; }
     }
 }
 
-.header__nav { display: flex; gap: .25rem; flex: 1; }
+.header__nav { display: none; gap: .25rem; flex: 1; }
 .header__nav-link {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
     padding: .375rem .75rem;
     border-radius: 8px;
     font-weight: 600;
     font-size: .875rem;
-    color: var(--logo-color);
+    color: rgba(255, 255, 255, .85);
     transition: color var(--transition), background var(--transition);
 }
-.header__nav-link:hover { color: var(--text); background: var(--bg-3); }
+.header__nav-link svg {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    opacity: .8;
+    transition: opacity var(--transition);
+}
+.header__nav-link:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, .12);
+}
+.header__nav-link:hover svg { opacity: 1; }
 
 .header__actions {
     display: flex;
     align-items: center;
     gap: .75rem;
     flex-shrink: 0;
+}
+
+/* ── Header — menu profil (dropdown) ─────────────────────────── */
+.header__profile-menu {
+    position: relative;
+    flex-shrink: 0;
+}
+
+/* Le bouton est désormais le <summary class="header__user"> (avatar + libellé) */
+.header__user {
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+}
+.header__user::-webkit-details-marker { display: none; }
+
+.header__profile-caret {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    opacity: .9;
+    transition: transform var(--transition);
+}
+
+.header__profile-menu[open] .header__profile-caret { transform: rotate(180deg); }
+
+.header__profile-menu[open] .header__user,
+.header__user:hover {
+    border-color: var(--accent);
+    color: var(--text);
+}
+
+.header__user:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(124,58,237,.22);
+}
+
+.header__profile-dropdown {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 10px);
+    min-width: 200px;
+    background: var(--bg-2);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 18px 60px rgba(0,0,0,.45);
+    padding: .4rem;
+    z-index: 250;
+}
+
+.header__profile-item {
+    display: flex;
+    align-items: center;
+    gap: .65rem;
+    padding: .65rem .75rem;
+    border-radius: 10px;
+    color: var(--text-2);
+    font-size: .875rem;
+    font-weight: 600;
+    transition: background var(--transition), color var(--transition);
+    text-decoration: none;
+}
+.header__profile-item svg {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    opacity: .7;
+    transition: opacity var(--transition);
+}
+.header__profile-item:hover svg,
+.header__profile-item:focus-visible svg { opacity: 1; }
+
+.header__profile-item:hover,
+.header__profile-item:focus-visible {
+    background: var(--bg-3);
+    color: var(--text);
+    outline: none;
 }
 
 .header__icon-btn {
@@ -706,26 +800,27 @@ h1, h2, h3, .display { font-family: var(--font-display); }
 
 /* ── Header — lien actif ──────────────────────────────────────── */
 .header__nav-link--active {
-    color: var(--text);
-    background: var(--bg-3);
+    color: #fff;
+    background: rgba(255, 255, 255, .15);
 }
+.header__nav-link--active svg { opacity: 1; }
 
 /* ── Header — burger ──────────────────────────────────────────── */
 .header__burger {
-    display: none;
+    display: flex;
     align-items: center;
     justify-content: center;
     width: 36px;
     height: 36px;
     border-radius: 8px;
     background: none;
-    border: 1.5px solid var(--bg-2);
+    border: 1.5px solid rgba(255, 255, 255, .25);
     cursor: pointer;
-    color: var(--bg-2);
+    color: #fff;
     flex-shrink: 0;
     transition: all var(--transition);
 }
-.header__burger:hover { border-color: var(--accent); color: var(--text); }
+.header__burger:hover { border-color: rgba(255, 255, 255, .5); }
 .header__burger svg { width: 18px; height: 18px; }
 
 /* ── Backdrop ─────────────────────────────────────────────────── */
@@ -889,10 +984,6 @@ h1, h2, h3, .display { font-family: var(--font-display); }
 .header__drawer-register { color: var(--accent-3); font-weight: 600; }
 .header__drawer-register:hover { background: rgba(124, 58, 237, .1); color: var(--accent-3); }
 
-@media (max-width: 768px) {
-    .header__nav  { display: none; }
-    .header__burger { display: flex; }
-}
 
 /* ── View-toggle ──────────────────────────────────────────────── */
 .view-toggle {
@@ -1002,6 +1093,7 @@ h1, h2, h3, .display { font-family: var(--font-display); }
     gap: .5rem;
     margin-bottom: .75rem;
 }
+.filters-bar .filters-active { margin-bottom: 0; }
 .filter-tag {
     display: inline-flex;
     align-items: center;

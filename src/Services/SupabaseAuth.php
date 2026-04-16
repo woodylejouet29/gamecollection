@@ -245,11 +245,15 @@ class SupabaseAuth
     public function updateProfile(string $userId, array $fields): array
     {
         try {
-            $allowed = ['username', 'avatar_url', 'bio'];
+            $allowed = ['username', 'avatar_url', 'bio', 'collection_public'];
             $payload = array_intersect_key($fields, array_flip($allowed));
 
             if (empty($payload)) {
                 return ['success' => true];
+            }
+
+            if (array_key_exists('collection_public', $payload)) {
+                $payload['collection_public'] = (bool) $payload['collection_public'];
             }
 
             $res = $this->http->patch("{$this->url}/rest/v1/users?id=eq.{$userId}", [

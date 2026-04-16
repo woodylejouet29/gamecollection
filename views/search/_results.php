@@ -70,7 +70,7 @@ $sortOptions = [
 
 $baseUrl    = $baseUrl ?? '/search';
 $nextCursor = $nextCursor ?? null;
-$pageSize   = (int) ($pageSize ?? 24);
+$pageSize   = (int) ($pageSize ?? 42);
 $error      = !empty($error);
 $countMode  = (string) ($countMode ?? 'estimated');
 ?>

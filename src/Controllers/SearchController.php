@@ -89,7 +89,7 @@ class SearchController
             'sort'       => $sort,
         ];
 
-        $perPage = 24;
+        $perPage = 42;
         $cursor  = isset($_GET['cursor']) ? trim((string) $_GET['cursor']) : '';
 
         // Détection requête AJAX (intercept JS via X-Requested-With)

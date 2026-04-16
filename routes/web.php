@@ -64,9 +64,12 @@ $router->delete('/api/collection/delete',      [App\Controllers\Api\CollectionAp
 $router->get('/api/collection/export',         [App\Controllers\Api\CollectionApiController::class, 'export']);
 $router->get('/api/collection/export-xlsx-by-platform', [App\Controllers\Api\CollectionApiController::class, 'exportByPlatformXlsx']);
 
-// $router->get('/wishlist',    [App\Controllers\WishlistController::class, 'index']);
+// ──────────────────────────────────────────────
+//  Bloc 6.1 — Pages communauté
+// ──────────────────────────────────────────────
+$router->get('/wishlist',    [App\Controllers\WishlistController::class, 'index']);
 // $router->get('/agenda',      [App\Controllers\AgendaController::class, 'index']);
-// $router->get('/user/{slug}', [App\Controllers\UserController::class, 'show']);
+$router->get('/user/{slug}', [App\Controllers\UserController::class, 'show']);
 // $router->get('/barcode',     [App\Controllers\BarcodeController::class, 'index']);
 $router->post('/api/wishlist/toggle',        [App\Controllers\Api\WishlistController::class, 'toggle']);
 $router->post('/api/reviews/add',            [App\Controllers\Api\ReviewController::class, 'add']);

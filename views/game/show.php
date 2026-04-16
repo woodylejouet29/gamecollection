@@ -24,6 +24,7 @@ $releasesByRegion = $releases_by_region ?? [];
 $versions         = $versions          ?? [];
 $reviews          = $reviews           ?? [];
 $avgReview        = $avg_review        ?? null;
+$communityPhotos  = $community_photos  ?? [];
 $wishlistCount    = $wishlist_count    ?? 0;
 $isWishlisted     = $is_wishlisted     ?? false;
 $collectionCount  = (int) ($collection_count ?? 0);
@@ -332,7 +333,32 @@ function platformLabel(array $p): string
 
             <?php /* Onglets (mobile) — fallback sans JS : tout reste visible */ ?>
             <?php
-            $validVideos = array_filter($videos, fn($v) => is_array($v) && !empty($v['video_id']));
+            // Compat: en base, `videos` peut être soit:
+            // - liste d'objets (format IGDB) : [{video_id, name}, ...]
+            // - liste de strings (ids YouTube) : ["dQw4w9WgXcQ", ...] (IgdbSync historique)
+            $videosNormalized = [];
+            if (is_array($videos)) {
+                foreach ($videos as $v) {
+                    if (is_array($v)) {
+                        $vid = trim((string) ($v['video_id'] ?? ''));
+                        if ($vid !== '') {
+                            $videosNormalized[] = [
+                                'video_id' => $vid,
+                                'name'     => isset($v['name']) ? (string) $v['name'] : null,
+                            ];
+                        }
+                        continue;
+                    }
+                    if (is_string($v)) {
+                        $vid = trim($v);
+                        if ($vid !== '') {
+                            $videosNormalized[] = ['video_id' => $vid, 'name' => null];
+                        }
+                        continue;
+                    }
+                }
+            }
+            $validVideos = $videosNormalized;
             $hasEditionsTab = !empty($editions) || !empty($dlcs);
             ?>
             <section class="game-tabs" data-game-tabs aria-label="Navigation fiche jeu">
@@ -405,11 +431,54 @@ function platformLabel(array $p): string
                         </section>
                         <?php endif; ?>
 
+                        <?php /* Vidéos (desktop : entre synopsis et galerie) */ ?>
+                        <div class="game-videos-desktop">
+                            <section class="game-section">
+                                <div class="game-section__header">
+                                    <h2 class="game-section__title">Vidéos</h2>
+                                </div>
+
+                                <?php if (!empty($validVideos)): ?>
+                                    <div class="game-videos">
+                                        <?php foreach (array_slice($validVideos, 0, 6) as $v):
+                                            $ytId   = htmlspecialchars((string) ($v['video_id'] ?? ''));
+                                            $ytName = htmlspecialchars((string) ($v['name'] ?? 'Vidéo'));
+                                            if ($ytId === '') continue;
+                                        ?>
+                                            <div class="game-video-card">
+                                                <button class="game-video-card__thumb" type="button"
+                                                        data-yt-id="<?= $ytId ?>"
+                                                        aria-label="Lire : <?= $ytName ?>">
+                                                    <img src="https://img.youtube.com/vi/<?= $ytId ?>/hqdefault.jpg"
+                                                         alt="<?= $ytName ?>"
+                                                         loading="lazy">
+                                                    <div class="game-video-card__play" aria-hidden="true">
+                                                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                                            <circle cx="12" cy="12" r="12" fill="rgba(0,0,0,.6)"/>
+                                                            <path d="M10 8l6 4-6 4V8z" fill="#fff"/>
+                                                        </svg>
+                                                    </div>
+                                                </button>
+                                                <p class="game-video-card__name"><?= $ytName ?></p>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="game-empty">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                                        </svg>
+                                        <p>Aucune vidéo pour le moment.</p>
+                                    </div>
+                                <?php endif; ?>
+                            </section>
+                        </div>
+
                         <?php /* Galerie de screenshots */ ?>
                         <?php if (!empty($screenshots)): ?>
                         <section class="game-section">
                             <h2 class="game-section__title">Galerie</h2>
-                            <div class="game-gallery" id="game-gallery">
+                            <div class="game-gallery" id="game-gallery" data-lightbox-gallery>
                                 <?php foreach ($screenshots as $i => $shot):
                                     $shotUrl = is_array($shot) ? ($shot['url'] ?? '') : $shot;
                                     $thumb   = gameThumb($shotUrl, 't_screenshot_med');
@@ -672,8 +741,9 @@ function platformLabel(array $p): string
                             <?php if (!empty($validVideos)): ?>
                                 <div class="game-videos">
                                     <?php foreach (array_slice($validVideos, 0, 6) as $v):
-                                        $ytId   = htmlspecialchars($v['video_id']);
-                                        $ytName = htmlspecialchars($v['name'] ?? 'Vidéo');
+                                        $ytId   = htmlspecialchars((string) ($v['video_id'] ?? ''));
+                                        $ytName = htmlspecialchars((string) ($v['name'] ?? 'Vidéo'));
+                                        if ($ytId === '') continue;
                                     ?>
                                         <div class="game-video-card">
                                             <button class="game-video-card__thumb" type="button"
@@ -710,6 +780,34 @@ function platformLabel(array $p): string
                          data-panel="reviews"
                          aria-labelledby="game-tab-reviews"
                          tabindex="-1">
+                        <?php
+                            $communityPhotos = is_array($communityPhotos) ? $communityPhotos : [];
+                            $communityPhotos = array_values(array_filter($communityPhotos, function ($p) {
+                                return is_array($p) && !empty($p['url']);
+                            }));
+                        ?>
+                        <?php if (!empty($communityPhotos)): ?>
+                            <section class="game-section">
+                                <h2 class="game-section__title">Photos des collectionneurs</h2>
+                                <div class="game-gallery" id="community-gallery" data-lightbox-gallery>
+                                    <?php foreach (array_slice($communityPhotos, 0, 18) as $i => $p):
+                                        $url = (string) ($p['url'] ?? '');
+                                        if ($url === '') continue;
+                                    ?>
+                                        <button class="game-gallery__thumb" type="button"
+                                                data-index="<?= (int) $i ?>"
+                                                data-full="<?= htmlspecialchars($url, ENT_QUOTES) ?>"
+                                                aria-label="Voir photo <?= (int) $i + 1 ?>">
+                                            <img src="<?= htmlspecialchars($url) ?>"
+                                                 alt="Photo <?= (int) $i + 1 ?>"
+                                                 loading="lazy"
+                                                 onerror="this.style.display='none'">
+                                        </button>
+                                    <?php endforeach; ?>
+                                </div>
+                            </section>
+                        <?php endif; ?>
+
                         <?php /* Avis des membres */ ?>
                         <section class="game-section" id="reviews-section">
                             <div class="game-section__header">
@@ -928,6 +1026,78 @@ function platformLabel(array $p): string
             </div>
             <?php endif; ?>
 
+            <?php /* Éditions (desktop : dans la colonne de droite) */ ?>
+            <?php if ($hasEditionsTab): ?>
+                <div class="game-editions-desktop">
+                    <?php if (!empty($editions)): ?>
+                        <section class="game-section">
+                            <h2 class="game-section__title">Éditions</h2>
+                            <div class="game-versions">
+                                <?php foreach ($editions as $ed):
+                                    $edSlug = trim((string) ($ed['slug'] ?? ''));
+                                ?>
+                                    <?php if ($edSlug !== ''): ?>
+                                    <a class="game-version-card game-version-card--link" href="/game/<?= htmlspecialchars($edSlug) ?>">
+                                    <?php else: ?>
+                                    <div class="game-version-card">
+                                    <?php endif; ?>
+                                        <?php if (!empty($ed['cover_url'])): ?>
+                                            <img class="game-version-card__cover"
+                                                 src="<?= htmlspecialchars(gameSrc($ed['cover_url'])) ?>"
+                                                 alt="<?= htmlspecialchars($ed['name'] ?? '') ?>"
+                                                 loading="lazy">
+                                        <?php endif; ?>
+                                        <div class="game-version-card__info">
+                                            <strong class="game-version-card__name"><?= htmlspecialchars($ed['name'] ?? '') ?></strong>
+                                            <?php if (!empty($ed['description'])): ?>
+                                                <p class="game-version-card__desc">
+                                                    <?= htmlspecialchars(mb_substr($ed['description'], 0, 200)) ?>
+                                                    <?= mb_strlen($ed['description']) > 200 ? '…' : '' ?>
+                                                </p>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php if ($edSlug !== ''): ?></a><?php else: ?></div><?php endif; ?>
+                                <?php endforeach; ?>
+                            </div>
+                        </section>
+                    <?php endif; ?>
+
+                    <?php if (!empty($dlcs)): ?>
+                        <section class="game-section">
+                            <h2 class="game-section__title">DLC &amp; Extensions</h2>
+                            <div class="game-versions">
+                                <?php foreach ($dlcs as $dlc):
+                                    $dlcSlug = trim((string) ($dlc['slug'] ?? ''));
+                                ?>
+                                    <?php if ($dlcSlug !== ''): ?>
+                                    <a class="game-version-card game-version-card--dlc game-version-card--link" href="/game/<?= htmlspecialchars($dlcSlug) ?>">
+                                    <?php else: ?>
+                                    <div class="game-version-card game-version-card--dlc">
+                                    <?php endif; ?>
+                                        <?php if (!empty($dlc['cover_url'])): ?>
+                                            <img class="game-version-card__cover"
+                                                 src="<?= htmlspecialchars(gameSrc($dlc['cover_url'])) ?>"
+                                                 alt="<?= htmlspecialchars($dlc['name'] ?? '') ?>"
+                                                 loading="lazy">
+                                        <?php endif; ?>
+                                        <div class="game-version-card__info">
+                                            <strong class="game-version-card__name"><?= htmlspecialchars($dlc['name'] ?? '') ?></strong>
+                                            <span class="dlc-tag">DLC</span>
+                                            <?php if (!empty($dlc['description'])): ?>
+                                                <p class="game-version-card__desc">
+                                                    <?= htmlspecialchars(mb_substr($dlc['description'], 0, 200)) ?>
+                                                    <?= mb_strlen($dlc['description']) > 200 ? '…' : '' ?>
+                                                </p>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php if ($dlcSlug !== ''): ?></a><?php else: ?></div><?php endif; ?>
+                                <?php endforeach; ?>
+                            </div>
+                        </section>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
+
         </div>
         </aside><!-- /.game-sidebar -->
 
@@ -1046,27 +1216,3 @@ function platformLabel(array $p): string
     </div>
 </div>
 
-<script>
-(() => {
-  // Desktop only: épingle la sidebar après la bannière (hero).
-  const mq = window.matchMedia('(min-width: 769px)');
-  const hero = document.querySelector('.game-hero');
-  const sidebar = document.querySelector('.game-sidebar');
-  if (!hero || !sidebar) return;
-
-  function update() {
-    if (!mq.matches) {
-      sidebar.classList.remove('is-fixed');
-      return;
-    }
-    const heroBottom = hero.getBoundingClientRect().bottom + window.scrollY;
-    const threshold = heroBottom - 90; // petit buffer pour éviter l'overlap
-    sidebar.classList.toggle('is-fixed', window.scrollY >= threshold);
-  }
-
-  update();
-  window.addEventListener('scroll', update, { passive: true });
-  window.addEventListener('resize', update);
-  mq.addEventListener?.('change', update);
-})();
-</script>

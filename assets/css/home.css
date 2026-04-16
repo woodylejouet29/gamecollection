@@ -5,7 +5,7 @@
 /* ── Hero invité ──────────────────────────────────────────────── */
 .hero-guest {
     position: relative;
-    padding: 5rem 0 0;
+    padding: 5rem 1rem 0;
     overflow: hidden;
 }
 
@@ -269,6 +269,42 @@
     border-bottom: 1px solid var(--border);
 }
 .home-section:last-child { border-bottom: none; }
+
+/* ── Colonnes homepage (desktop) ──────────────────────────────── */
+.home-columns {
+    max-width: var(--layout-max);
+    margin: 0 auto;
+    padding: 0 1.5rem;
+}
+
+.home-section--col {
+    padding: 0;
+    border-bottom: none;
+    margin: 0;
+}
+
+.home-section--col > .container {
+    max-width: 100%;
+    padding: 2rem;
+    margin: 0;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-glow);
+}
+
+@media (min-width: 901px) {
+    .home-columns {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 1.5rem;
+        padding-top: 3rem;
+        padding-bottom: 3rem;
+        border-bottom: 1px solid var(--border);
+    }
+    /* Les sections suivantes gardent leur propre séparation */
+    .home-columns + .home-section { border-top: none; }
+}
 
 .home-section__header {
     display: flex;
@@ -678,6 +714,8 @@
     color: var(--text-2);
     line-height: 1.65;
     flex: 1;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .review-card__footer {
@@ -762,6 +800,11 @@
     .hero-guest__mosaic { display: none; }
     .home-features__grid { grid-template-columns: 1fr; gap: 1.5rem; }
     .hero-stats__inner { gap: 1.5rem; }
+    .home-columns { padding-top: 0; padding-bottom: 0; }
+    .home-section--col > .container { padding: 0 0; background: transparent; border: 0; box-shadow: none; }
+    .home-section--col { padding: 3rem 0; border-bottom: 1px solid var(--border); }
+    /* Empêche les avis de dépasser sur petits écrans */
+    .reviews-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 600px) {

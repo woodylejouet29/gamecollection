@@ -5,13 +5,16 @@ declare(strict_types=1);
 namespace App\Controllers\Api;
 
 use App\Core\Middleware\AuthMiddleware;
-use App\Services\SupabaseAuth;
+use App\Services\UserProfileService;
+use GuzzleHttp\Client;
 
 /**
  * GET /api/user/profile
  * 
  * Récupère le profil de l'utilisateur connecté.
- * Optionnellement, peut récupérer un profil public via paramètre ?user_id=...
+ * Optionnellement, peut récupérer un profil public via :
+ *   - ?username=...
+ *   - ?user_id=...
  * 
  * Réponse standard :
  * - { "success": true, "data": { "user": {...}, "stats": {...} } }
@@ -21,126 +24,159 @@ class UserApiController
 {
     public function profile(): void
     {
-        // Vérifier si on demande un profil public
-        $requestedUserId = $_GET['user_id'] ?? null;
+        $requestedUserId = isset($_GET['user_id']) ? trim((string) $_GET['user_id']) : '';
+        $requestedUsername = isset($_GET['username']) ? trim((string) $_GET['username']) : '';
         $currentUserId = AuthMiddleware::userId();
 
-        // Si un user_id est spécifié, c'est une requête de profil public
-        if ($requestedUserId && $requestedUserId !== $currentUserId) {
-            $this->getPublicProfile($requestedUserId);
+        // Profil public par username
+        if ($requestedUsername !== '') {
+            $this->getPublicProfileByUsername($requestedUsername, $currentUserId);
             return;
         }
 
-        // Sinon, retourner le profil de l'utilisateur connecté
-        AuthMiddleware::requireAuth();
+        // Profil public par user_id (compat)
+        if ($requestedUserId !== '' && $requestedUserId !== $currentUserId) {
+            $this->getPublicProfileById($requestedUserId, $currentUserId);
+            return;
+        }
 
+        // Profil de l'utilisateur connecté
         $userId = AuthMiddleware::userId();
         if (!$userId) {
             $this->json(['success' => false, 'error' => ['code' => 'UNAUTHORIZED', 'message' => 'Utilisateur non authentifié.']], 401);
         }
 
-        try {
-            $auth = new SupabaseAuth();
-            $userData = $auth->getUser($userId);
-
-            if (!$userData) {
-                $this->json(['success' => false, 'error' => ['code' => 'NOT_FOUND', 'message' => 'Utilisateur non trouvé.']], 404);
-            }
-
-            // Récupérer les statistiques de l'utilisateur
-            $stats = $this->getUserStats($userId);
-
-            $this->json([
-                'success' => true,
-                'data' => [
-                    'user' => [
-                        'id' => $userId,
-                        'username' => $userData['username'] ?? '',
-                        'email' => $userData['email'] ?? '',
-                        'avatar_url' => $userData['avatar_url'] ?? '',
-                        'created_at' => $userData['created_at'] ?? '',
-                        'collection_public' => $userData['collection_public'] ?? false,
-                        'platforms' => $userData['platforms'] ?? [],
-                        'genres' => $userData['genres'] ?? [],
-                    ],
-                    'stats' => $stats
-                ]
-            ]);
-        } catch (\Throwable $e) {
-            error_log('User profile API error: ' . $e->getMessage());
-            $this->json(['success' => false, 'error' => ['code' => 'SERVER_ERROR', 'message' => 'Erreur lors de la récupération du profil.']], 500);
+        $profile = $this->getUserRowById($userId);
+        if (!$profile) {
+            $this->json(['success' => false, 'error' => ['code' => 'NOT_FOUND', 'message' => 'Utilisateur non trouvé.']], 404);
         }
+
+        $svc = new UserProfileService();
+        $statsBundle = $svc->getStatsAndReviews($userId);
+        $prefs = $svc->getByUsername((string) ($profile['username'] ?? ''), $userId);
+
+        $this->json([
+            'success' => true,
+            'data' => [
+                'user' => [
+                    'id' => $userId,
+                    'username' => (string) ($profile['username'] ?? ''),
+                    'email' => (string) (AuthMiddleware::user()['email'] ?? ''),
+                    'avatar_url' => (string) ($profile['avatar_url'] ?? ''),
+                    'bio' => (string) ($profile['bio'] ?? ''),
+                    'created_at' => (string) ($profile['created_at'] ?? ''),
+                    'collection_public' => (bool) ($profile['collection_public'] ?? false),
+                    'platforms' => $prefs['platforms'] ?? [],
+                    'genres' => $prefs['genres'] ?? [],
+                ],
+                'stats' => $statsBundle['stats'] ?? [],
+            ]
+        ]);
     }
 
     /**
-     * Récupère un profil public (utilisateur non connecté ou autre utilisateur)
+     * Profil public par user_id (ou owner si viewer==id).
      */
-    private function getPublicProfile(string $userId): void
+    private function getPublicProfileById(string $userId, ?string $viewerUserId = null): void
     {
-        try {
-            $auth = new SupabaseAuth();
-            $userData = $auth->getUser($userId);
-
-            if (!$userData) {
-                $this->json(['success' => false, 'error' => ['code' => 'NOT_FOUND', 'message' => 'Utilisateur non trouvé.']], 404);
-            }
-
-            // Vérifier si la collection est publique
-            $collectionPublic = $userData['collection_public'] ?? false;
-            if (!$collectionPublic) {
-                $this->json(['success' => false, 'error' => ['code' => 'PRIVATE_PROFILE', 'message' => 'Ce profil est privé.']], 403);
-            }
-
-            // Statistiques publiques seulement
-            $stats = $this->getPublicUserStats($userId);
-
-            $this->json([
-                'success' => true,
-                'data' => [
-                    'user' => [
-                        'id' => $userId,
-                        'username' => $userData['username'] ?? '',
-                        'avatar_url' => $userData['avatar_url'] ?? '',
-                        'created_at' => $userData['created_at'] ?? '',
-                    ],
-                    'stats' => $stats
-                ]
-            ]);
-        } catch (\Throwable $e) {
-            error_log('Public profile API error: ' . $e->getMessage());
-            $this->json(['success' => false, 'error' => ['code' => 'SERVER_ERROR', 'message' => 'Erreur lors de la récupération du profil.']], 500);
+        $profile = $this->getUserRowById($userId);
+        if (!$profile) {
+            $this->json(['success' => false, 'error' => ['code' => 'NOT_FOUND', 'message' => 'Utilisateur non trouvé.']], 404);
         }
+
+        $isOwner = $viewerUserId !== null && $viewerUserId === $userId;
+        if (!$isOwner && empty($profile['collection_public'])) {
+            $this->json(['success' => false, 'error' => ['code' => 'PRIVATE_PROFILE', 'message' => 'Ce profil est privé.']], 403);
+        }
+
+        $svc = new UserProfileService();
+        $statsBundle = $svc->getStatsAndReviews($userId);
+        $prefs = $svc->getByUsername((string) ($profile['username'] ?? ''), $viewerUserId);
+
+        $this->json([
+            'success' => true,
+            'data' => [
+                'user' => [
+                    'id' => (string) ($profile['id'] ?? ''),
+                    'username' => (string) ($profile['username'] ?? ''),
+                    'avatar_url' => (string) ($profile['avatar_url'] ?? ''),
+                    'bio' => (string) ($profile['bio'] ?? ''),
+                    'created_at' => (string) ($profile['created_at'] ?? ''),
+                    'collection_public' => (bool) ($profile['collection_public'] ?? false),
+                    'platforms' => $prefs['platforms'] ?? [],
+                    'genres' => $prefs['genres'] ?? [],
+                ],
+                'stats' => $statsBundle['stats'] ?? [],
+            ]
+        ]);
     }
 
     /**
-     * Récupère les statistiques d'un utilisateur (pour l'utilisateur lui-même)
+     * Profil public par username (ou owner si viewer==id).
      */
-    private function getUserStats(string $userId): array
+    private function getPublicProfileByUsername(string $username, ?string $viewerUserId = null): void
     {
-        // À implémenter : requêtes vers Supabase pour récupérer les stats
-        // Pour l'instant, retourner des valeurs par défaut
-        return [
-            'total_games' => 0,
-            'completed_games' => 0,
-            'hundred_percent_games' => 0,
-            'total_play_time_hours' => 0,
-            'average_rating' => 0,
-            'physical_count' => 0,
-            'digital_count' => 0,
-        ];
+        $svc = new UserProfileService();
+        $profileBundle = $svc->getByUsername($username, $viewerUserId);
+        if ($profileBundle === null) {
+            $this->json(['success' => false, 'error' => ['code' => 'NOT_FOUND', 'message' => 'Utilisateur non trouvé.']], 404);
+        }
+
+        $user = $profileBundle['user'] ?? [];
+        if (!empty($user['_private'])) {
+            $this->json(['success' => false, 'error' => ['code' => 'PRIVATE_PROFILE', 'message' => 'Ce profil est privé.']], 403);
+        }
+
+        $userId = (string) ($user['id'] ?? '');
+        $statsBundle = $svc->getStatsAndReviews($userId);
+
+        $this->json([
+            'success' => true,
+            'data' => [
+                'user' => [
+                    'id' => $userId,
+                    'username' => (string) ($user['username'] ?? ''),
+                    'avatar_url' => (string) ($user['avatar_url'] ?? ''),
+                    'bio' => (string) ($user['bio'] ?? ''),
+                    'created_at' => (string) ($user['created_at'] ?? ''),
+                    'collection_public' => (bool) ($user['collection_public'] ?? false),
+                    'platforms' => $profileBundle['platforms'] ?? [],
+                    'genres' => $profileBundle['genres'] ?? [],
+                ],
+                'stats' => $statsBundle['stats'] ?? [],
+            ]
+        ]);
     }
 
-    /**
-     * Récupère les statistiques publiques d'un utilisateur
-     */
-    private function getPublicUserStats(string $userId): array
+    private function getUserRowById(string $userId): ?array
     {
-        // À implémenter : stats publiques seulement
-        return [
-            'total_games' => 0,
-            'completed_games' => 0,
-            'average_rating' => 0,
-        ];
+        $userId = trim($userId);
+        if ($userId === '') {
+            return null;
+        }
+
+        try {
+            $http = new Client(['timeout' => 8, 'http_errors' => false]);
+            $supabaseUrl = rtrim($_ENV['SUPABASE_URL'] ?? '', '/');
+            $serviceKey = $_ENV['SUPABASE_SERVICE_ROLE_KEY'] ?? '';
+
+            $url = $supabaseUrl . '/rest/v1/users?id=eq.' . rawurlencode($userId)
+                . '&select=id,username,avatar_url,bio,collection_public,created_at&limit=1';
+
+            $res = $http->get($url, [
+                'headers' => [
+                    'apikey' => $serviceKey,
+                    'Authorization' => 'Bearer ' . $serviceKey,
+                ],
+            ]);
+            $rows = json_decode((string) $res->getBody(), true);
+            if (!is_array($rows) || empty($rows) || !is_array($rows[0] ?? null)) {
+                return null;
+            }
+            return $rows[0];
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     private function json(mixed $data, int $status = 200): never

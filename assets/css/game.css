@@ -240,6 +240,70 @@
     min-width: 0;
 }
 
+/* ── Desktop : 3 colonnes égales (gauche/avis/infos) ──────────── */
+@media (min-width: 901px) {
+    .game-body {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, .75fr);
+        column-gap: 2rem;
+        row-gap: 1rem;
+    }
+
+    /* On "aplatit" les wrappers pour que les panels deviennent des items de la grille */
+    .game-main { display: contents; }
+    .game-tabs { display: contents; }
+    .game-tabs__panels { display: contents; }
+
+    /* Colonne gauche : synopsis + galerie (overview) + vidéos + éditions */
+    .game-tabpanel[data-panel="overview"],
+    .game-tabpanel[data-panel="videos"] {
+        grid-column: 1;
+        min-width: 0;
+    }
+
+    /* Colonne centre : avis */
+    .game-tabpanel[data-panel="reviews"] {
+        grid-column: 2;
+        grid-row: 1;
+        min-width: 0;
+    }
+
+    /* Colonne droite : sidebar (infos + dates + liens) */
+    .game-sidebar {
+        grid-column: 3;
+        grid-row: 1;
+        align-self: start;
+    }
+
+    /* Le panel "Infos" (mobile) n'a pas d'intérêt sur desktop */
+    .game-tabpanel[data-panel="info"] { display: none; }
+    /* Éditions rendues dans la sidebar en desktop */
+    .game-tabpanel[data-panel="editions"] { display: none; }
+    .game-editions-desktop { display: block; }
+    /* Vidéos rendues dans l'overview en desktop */
+    .game-tabpanel[data-panel="videos"] { display: none; }
+    .game-videos-desktop { display: block; }
+
+    /* Sidebar : ne reste pas en place au scroll (desktop) */
+    .game-sidebar__inner {
+        position: static;
+        top: auto;
+        width: auto;
+        max-height: none;
+        overflow: visible;
+    }
+
+    .game-sidebar.is-fixed .game-sidebar__inner {
+        position: static;
+        top: auto;
+        width: auto;
+        max-height: none;
+        overflow: visible;
+    }
+
+    /* Dans une colonne 1/3, on évite de brider la largeur du texte */
+    .game-synopsis { max-width: none; }
+}
+
 /* ── Onglets (mobile) ─────────────────────────────────────────── */
 .game-tabs {
     margin-bottom: 1.5rem;
@@ -295,7 +359,8 @@
     font-size: .9375rem;
     color: var(--text-2);
     line-height: 1.75;
-    max-width: 72ch;
+    max-width: none;
+    width: 100%;
 }
 .game-synopsis--story {
     margin-top: 1rem;
@@ -555,6 +620,7 @@ a.game-version-card:focus-visible {
     color: var(--text-2);
     line-height: 1.7;
 }
+/* Photos des collectionneurs : réutilise désormais .game-gallery + lightbox */
 
 /* ── État vide ────────────────────────────────────────────────── */
 .game-empty {
@@ -1016,7 +1082,7 @@ a.game-version-card:focus-visible {
 .lightbox__nav--next { right: 1rem; }
 
 /* ── Responsive ───────────────────────────────────────────────── */
-@media (max-width: 1024px) {
+@media (max-width: 900px) {
     .game-body {
         grid-template-columns: 1fr 300px;
         gap: 2rem;
@@ -1137,6 +1203,11 @@ a.game-version-card:focus-visible {
     .game-tabs__mobile-info {
         display: block;
     }
+
+    /* Mobile : on garde l'onglet Éditions, on masque la version desktop (sidebar) */
+    .game-editions-desktop { display: none; }
+    /* Mobile : on garde l'onglet Vidéos, on masque la version desktop (overview) */
+    .game-videos-desktop { display: none; }
 
     .game-gallery {
         grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));

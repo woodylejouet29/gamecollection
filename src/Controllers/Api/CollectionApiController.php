@@ -161,6 +161,9 @@ class CollectionApiController
                     'condition_note'     => ($gameType === 'physical') ? ($copy['condition_note']     ?? '') : '',
                     'has_box'            => ($gameType === 'physical' && isset($copy['has_box']))    ? (bool) $copy['has_box']    : null,
                     'has_manual'         => ($gameType === 'physical' && isset($copy['has_manual'])) ? (bool) $copy['has_manual'] : null,
+                    'photo_urls'         => ($gameType === 'physical' && !empty($copy['photo_urls']) && is_array($copy['photo_urls']))
+                                            ? array_slice(array_values($copy['photo_urls']), 0, 3)
+                                            : [],
                 ]);
 
                 if ($result['success']) {

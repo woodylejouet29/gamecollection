@@ -6,6 +6,7 @@ namespace App\Services;
 
 use GuzzleHttp\Client;
 use GuzzleHttp\Promise\Utils as PromiseUtils;
+use App\Core\Logger;
 use Throwable;
 
 /**
@@ -95,6 +96,18 @@ class GameService
                 // `estimated` garde une UI fluide et réduit la charge DB.
                 ['headers' => array_merge($this->headers(), ['Prefer' => 'count=estimated'])]
             ),
+            // Photos de collectionneurs (entrée -> photos + user)
+            // On query la table parent `collection_entries` (filtrable par game_id),
+            // puis on embed `collection_photos` + `users`.
+            'community_photos' => $this->http->getAsync(
+                $this->supabaseUrl
+                . '/rest/v1/collection_entries'
+                . '?game_id=eq.' . $gameId
+                . '&select=created_at,users(username,avatar_url),collection_photos(url,display_order,created_at)'
+                . '&order=created_at.desc'
+                . '&limit=24',
+                ['headers' => $this->headers()]
+            ),
         ];
 
         if ($userId !== null) {
@@ -159,6 +172,32 @@ class GameService
         $platforms    = $this->fromSettled($settled, 'platforms') ?? [];
         $versions     = $this->fromSettled($settled, 'versions')  ?? [];
         $reviews      = $this->fromSettled($settled, 'reviews')   ?? [];
+        $communityRows = $this->fromSettled($settled, 'community_photos') ?? [];
+        if (is_array($communityRows) && !array_is_list($communityRows) && !empty($communityRows)) {
+            Logger::warning('GameService::community_photos unexpected payload', [
+                'game_id' => $gameId,
+                'payload_keys' => implode(',', array_keys($communityRows)),
+            ]);
+        }
+        $communityPhotos = [];
+        if (is_array($communityRows)) {
+            foreach ($communityRows as $row) {
+                if (!is_array($row)) continue;
+                $u = is_array($row['users'] ?? null) ? $row['users'] : [];
+                $photos = is_array($row['collection_photos'] ?? null) ? $row['collection_photos'] : [];
+                foreach ($photos as $p) {
+                    if (!is_array($p) || empty($p['url'])) continue;
+                    $communityPhotos[] = [
+                        'url' => (string) $p['url'],
+                        'display_order' => (int) ($p['display_order'] ?? 0),
+                        'created_at' => (string) ($p['created_at'] ?? ''),
+                        'collection_entries' => [
+                            'users' => $u,
+                        ],
+                    ];
+                }
+            }
+        }
         $isWishlisted = false;
         $wishlistCount = 0;
         $collectionCount = 0;
@@ -242,6 +281,7 @@ class GameService
             'versions'           => $versions,
             'reviews'            => $reviews,
             'avg_review'         => $avgReview,
+            'community_photos'   => is_array($communityPhotos) ? $communityPhotos : [],
             'wishlist_count'     => $wishlistCount,
             'is_wishlisted'      => $isWishlisted,
             'collection_count'   => $collectionCount,

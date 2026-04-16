@@ -4,11 +4,11 @@
  * Stratégie de cache : Cache First pour les assets statiques,
  * Network First pour les pages HTML (pour la fraîcheur des données).
  * 
- * Version: 1.0.0
+ * Version: 1.0.1
  */
 
-const CACHE_NAME = 'playshelf-v1';
-const STATIC_CACHE = 'playshelf-static-v1';
+const CACHE_NAME = 'playshelf-v2';
+const STATIC_CACHE = 'playshelf-static-v2';
 
 // Assets à mettre en cache immédiatement à l'installation
 const PRECACHE_ASSETS = [

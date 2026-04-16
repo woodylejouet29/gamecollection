@@ -36,6 +36,7 @@ class ProfileController
             'email'    => $this->updateEmail(),
             'password' => $this->updatePassword(),
             'avatar'   => $this->updateAvatar(),
+            'settings' => $this->updateSettings(),
             default    => View::redirect('/edit-profile'),
         };
     }
@@ -266,5 +267,34 @@ class ProfileController
         imagedestroy($img);
 
         return '/assets/uploads/avatars/' . $filename;
+    }
+
+    // ──────────────────────────────────────────────
+    //  Paramètres : visibilité collection
+    // ──────────────────────────────────────────────
+
+    private function updateSettings(): void
+    {
+        $userId = AuthMiddleware::userId();
+        if (!$userId) {
+            View::redirect('/login');
+        }
+
+        $collectionPublic = ($_POST['collection_public'] ?? '0') === '1';
+
+        $result = (new SupabaseAuth())->updateProfile($userId, [
+            'collection_public' => $collectionPublic,
+        ]);
+
+        if (!$result['success']) {
+            Flash::error('Erreur lors de la mise à jour des paramètres.');
+            View::redirect('/edit-profile');
+        }
+
+        Flash::success($collectionPublic
+            ? 'Votre collection est maintenant publique.'
+            : 'Votre collection est maintenant privée.'
+        );
+        View::redirect('/edit-profile');
     }
 }

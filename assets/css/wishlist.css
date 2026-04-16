@@ -1,0 +1,502 @@
+/* ================================================================
+   wishlist.css — Page /wishlist  (mobile-first)
+   ================================================================ */
+
+/* ── Hero ─────────────────────────────────────────────────────── */
+.wl-hero {
+  padding: 2.25rem 0 1.75rem;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(
+    160deg,
+    rgba(124, 58, 237, 0.13) 0%,
+    rgba(124, 58, 237, 0.04) 55%,
+    transparent 100%
+  );
+}
+
+[data-theme="light"] .wl-hero {
+  background: linear-gradient(
+    160deg,
+    rgba(124, 58, 237, 0.09) 0%,
+    rgba(168, 85, 247, 0.03) 55%,
+    transparent 100%
+  );
+}
+
+.wl-hero__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.wl-hero__left {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  min-width: 0;
+}
+
+.wl-hero__title {
+  display: inline-flex;
+  align-items: center;
+  gap: .6rem;
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin: 0;
+  line-height: 1.15;
+}
+
+.wl-hero__title svg {
+  width: 22px;
+  height: 22px;
+  color: var(--accent-2);
+  flex-shrink: 0;
+}
+
+.wl-hero__meta {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+
+.wl-hero__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .3rem .75rem;
+  background: rgba(124, 58, 237, 0.1);
+  border: 1px solid rgba(124, 58, 237, 0.22);
+  border-radius: 999px;
+  font-size: .8rem;
+  color: var(--accent-2);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+[data-theme="light"] .wl-hero__pill {
+  background: rgba(124, 58, 237, 0.08);
+  border-color: rgba(124, 58, 237, 0.2);
+}
+
+.wl-hero__pill strong {
+  font-weight: 800;
+  color: var(--accent-2);
+}
+
+.wl-hero__hint {
+  font-size: .8rem;
+  color: var(--text-3);
+}
+
+.wl-hero__right {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding-top: .2rem;
+}
+
+/* ── Contenu ──────────────────────────────────────────────────── */
+.wl-content {
+  padding: 1.25rem 1.5rem 5rem;
+}
+
+/* ── Toolbar (count) — masqué, fusionné dans le hero pill ─────── */
+.wl-toolbar { display: none; }
+
+/* ── Grille scoped (surcharge global.css pour liste 2 colonnes) ─ */
+.wl-content .game-grid--list {
+  grid-template-columns: 1fr;
+  gap: .55rem;
+}
+
+/* ── Card — base ──────────────────────────────────────────────── */
+.wl-card {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  position: relative;
+  transition:
+    transform .2s ease,
+    border-color .2s ease,
+    box-shadow .2s ease;
+}
+
+.wl-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(124, 58, 237, 0.38);
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, .25),
+    0 0 0 1px rgba(124, 58, 237, 0.12);
+}
+
+.wl-card.is-busy {
+  opacity: .6;
+  pointer-events: none;
+}
+
+/* Cover */
+.wl-card__cover {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  background: var(--bg-3);
+  overflow: hidden;
+}
+
+.wl-card__placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  padding: .75rem;
+  color: var(--text-3);
+  font-size: .78rem;
+  line-height: 1.3;
+  background: radial-gradient(
+    80% 60% at 25% 15%,
+    rgba(124, 58, 237, .28) 0%,
+    transparent 70%
+  );
+}
+
+[data-theme="light"] .wl-card__placeholder {
+  background: radial-gradient(
+    80% 60% at 25% 15%,
+    rgba(124, 58, 237, .15) 0%,
+    transparent 70%
+  );
+  color: var(--text-3);
+}
+
+.wl-card__cover img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Rating badge */
+.wl-card__rating {
+  position: absolute;
+  left: .55rem;
+  top: .55rem;
+  padding: .2rem .45rem;
+  font-size: .75rem;
+  font-weight: 800;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, .52);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, .14);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  line-height: 1.4;
+}
+
+.wl-card__rating--high { color: #22c55e; }
+.wl-card__rating--mid  { color: #f59e0b; }
+.wl-card__rating--low  { color: #ef4444; }
+
+/* Bouton retirer */
+.wl-card__remove {
+  position: absolute;
+  top: .55rem;
+  right: .55rem;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, .16);
+  background: rgba(0, 0, 0, .4);
+  color: rgba(255, 255, 255, .8);
+  cursor: pointer;
+  transition:
+    background .18s ease,
+    border-color .18s ease,
+    color .18s ease,
+    transform .18s ease;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.wl-card__remove svg {
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+}
+
+.wl-card__remove:hover {
+  background: rgba(239, 68, 68, .75);
+  border-color: rgba(239, 68, 68, .6);
+  color: #fff;
+  transform: scale(1.08);
+}
+
+/* Body */
+.wl-card__body {
+  padding: .85rem .9rem 1rem;
+}
+
+.wl-card__title {
+  margin: 0;
+  font-size: .93rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.wl-card__title a {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.wl-card__title a:hover { color: var(--accent-2); }
+
+.wl-card__platforms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .3rem;
+  margin: .45rem 0 .2rem;
+}
+
+.wl-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .25rem .65rem;
+  margin-top: .45rem;
+  color: var(--text-3);
+  font-size: .78rem;
+}
+
+.wl-card__date {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+}
+
+.wl-card__date svg {
+  width: 13px;
+  height: 13px;
+  opacity: .8;
+  flex-shrink: 0;
+}
+
+.wl-card__dev {
+  color: var(--text-3);
+}
+
+.wl-card__added {
+  color: var(--text-3);
+  opacity: .75;
+}
+
+.wl-card__meta-sep {
+  color: var(--text-3);
+  opacity: .4;
+  font-size: .7rem;
+  line-height: 1;
+}
+
+/* ── Vue liste ────────────────────────────────────────────────── */
+.game-grid--list .wl-card {
+  display: flex;
+  align-items: center;
+  gap: .85rem;
+  padding: .7rem .9rem;
+  border-radius: var(--radius);
+}
+
+.game-grid--list .wl-card:hover {
+  transform: none;
+}
+
+.game-grid--list .wl-card__cover {
+  width: 54px;
+  min-width: 54px;
+  height: 72px;
+  aspect-ratio: unset;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.game-grid--list .wl-card__placeholder {
+  padding: .4rem;
+  font-size: .65rem;
+}
+
+.game-grid--list .wl-card__body {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  padding-right: 3rem;
+}
+
+.game-grid--list .wl-card__title {
+  font-size: .92rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.game-grid--list .wl-card__platforms {
+  margin: .3rem 0 .1rem;
+}
+
+.game-grid--list .wl-card__meta {
+  margin-top: .2rem;
+  gap: .2rem .55rem;
+}
+
+.game-grid--list .wl-card__dev {
+  display: none;
+}
+
+.game-grid--list .wl-card__remove {
+  position: absolute;
+  top: 50%;
+  right: .75rem;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  background: var(--bg-3);
+  color: var(--text-2);
+  border: 1.5px solid var(--border);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.game-grid--list .wl-card__remove:hover {
+  background: rgba(239, 68, 68, .12);
+  border-color: rgba(239, 68, 68, .45);
+  color: #ef4444;
+  transform: translateY(-50%) scale(1.06);
+}
+
+.game-grid--list .wl-card__rating {
+  left: auto;
+  right: .35rem;
+  top: .35rem;
+  font-size: .68rem;
+  padding: .15rem .35rem;
+  display: none;
+}
+
+/* ── État vide ────────────────────────────────────────────────── */
+@keyframes wl-pulse {
+  0%, 100% { opacity: .85; transform: scale(1); }
+  50%       { opacity: 1;   transform: scale(1.06); }
+}
+
+.wl-empty {
+  margin: 2.5rem auto 0;
+  max-width: 420px;
+  padding: 3rem 2rem;
+  border: 1px dashed rgba(124, 58, 237, .3);
+  border-radius: var(--radius-lg);
+  background: rgba(124, 58, 237, .05);
+  text-align: center;
+}
+
+[data-theme="light"] .wl-empty {
+  background: rgba(124, 58, 237, .04);
+  border-color: rgba(124, 58, 237, .22);
+}
+
+.wl-empty__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(124, 58, 237, .1);
+  margin-bottom: 1.25rem;
+  animation: wl-pulse 2.8s ease-in-out infinite;
+}
+
+.wl-empty__icon svg {
+  width: 36px;
+  height: 36px;
+  color: var(--accent-2);
+}
+
+.wl-empty__title {
+  margin: 0 0 .5rem;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.wl-empty__desc {
+  margin: 0 0 1.5rem;
+  color: var(--text-3);
+  font-size: .9rem;
+  line-height: 1.5;
+}
+
+/* ── Tablette portrait (≥ 640px) ──────────────────────────────── */
+@media (min-width: 640px) {
+  .wl-hero {
+    padding: 2.75rem 0 2rem;
+  }
+
+  .wl-hero__title {
+    font-size: 1.75rem;
+  }
+
+  .wl-hero__title svg {
+    width: 26px;
+    height: 26px;
+  }
+
+  .wl-content .game-grid--list {
+    grid-template-columns: repeat(2, 1fr);
+    gap: .65rem;
+  }
+
+  .game-grid--list .wl-card__cover {
+    width: 58px;
+    min-width: 58px;
+    height: 78px;
+  }
+
+  .game-grid--list .wl-card__title {
+    font-size: .95rem;
+  }
+
+  .game-grid--list .wl-card__dev {
+    display: inline;
+  }
+}
+
+/* ── Tablette paysage (≥ 768px) ───────────────────────────────── */
+@media (min-width: 768px) {
+  .wl-hero__row {
+    align-items: center;
+  }
+
+  .wl-content {
+    padding-top: 1.5rem;
+  }
+}
+
+/* ── Desktop (≥ 1024px) ───────────────────────────────────────── */
+@media (min-width: 1024px) {
+  .wl-hero {
+    padding: 3rem 0 2.25rem;
+  }
+
+  .wl-content .game-grid--list {
+    gap: .75rem;
+  }
+}
+
+/* ── Large desktop (≥ 1280px) ────────────────────────────────── */
+@media (min-width: 1280px) {
+  .wl-content .game-grid--list {
+    gap: .9rem;
+  }
+}

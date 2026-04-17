@@ -46,9 +46,8 @@ class GameController
         $gameTitle = $game['title'] ?? 'Jeu';
         $year      = $game['release_date'] ? substr($game['release_date'], 0, 4) : '';
 
-        $synopsis = trim((string) ($game['synopsis'] ?? $game['storyline'] ?? ''));
-        $metaDesc = $synopsis !== ''
-            ? mb_substr(strip_tags($synopsis), 0, 160) . '…'
+        $metaDesc = !empty($game['developer'])
+            ? ("Découvrez " . $gameTitle . " par " . $game['developer'] . " sur PlayShelf — notes, plateformes, galerie et avis des membres.")
             : "Découvrez {$gameTitle} sur PlayShelf — notes, plateformes, galerie et avis des membres.";
 
         $coverUrl = $this->absoluteUrl($game['cover_url'] ?? '', $appUrl);

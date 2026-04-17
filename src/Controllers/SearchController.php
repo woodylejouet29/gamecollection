@@ -75,11 +75,43 @@ class SearchController
         $sortGet = trim((string) ($_GET['sort'] ?? ''));
         if ($sortGet === 'all' || $sortGet === '') {
             $sort = 'all';
-        } elseif (in_array($sortGet, ['recent', 'upcoming', 'rating'], true)) {
+        } elseif (in_array($sortGet, ['recent', 'upcoming', 'rating', 'release_asc'], true)) {
             $sort = $sortGet;
         } else {
             $sort = 'all';
         }
+
+        // ── Filtre date de sortie (presets + personnalisé) ──
+        $releasePreset = trim((string) ($_GET['release_preset'] ?? ''));
+        $allowedPresets = ['', 'this_month', 'last_3_months', 'this_year', 'last_year', 'custom'];
+        if (!in_array($releasePreset, $allowedPresets, true)) {
+            $releasePreset = '';
+        }
+
+        $releaseMode = trim((string) ($_GET['release_mode'] ?? 'year'));
+        if (!in_array($releaseMode, ['year', 'month', 'date'], true)) {
+            $releaseMode = 'year';
+        }
+
+        $releaseYearFrom  = trim((string) ($_GET['release_year_from'] ?? ''));
+        $releaseYearTo    = trim((string) ($_GET['release_year_to'] ?? ''));
+        $releaseMonthFrom = trim((string) ($_GET['release_month_from'] ?? ''));
+        $releaseMonthTo   = trim((string) ($_GET['release_month_to'] ?? ''));
+        $releaseDateFrom  = trim((string) ($_GET['release_date_from'] ?? ''));
+        $releaseDateTo    = trim((string) ($_GET['release_date_to'] ?? ''));
+
+        $releaseIncludeUnknown = !empty($_GET['release_include_unknown']) && (string) $_GET['release_include_unknown'] !== '0';
+
+        [$releaseFrom, $releaseTo] = $this->resolveReleaseBounds(
+            $releasePreset,
+            $releaseMode,
+            $releaseYearFrom,
+            $releaseYearTo,
+            $releaseMonthFrom,
+            $releaseMonthTo,
+            $releaseDateFrom,
+            $releaseDateTo
+        );
 
         $filters = [
             'q'          => trim($_GET['q']          ?? ''),
@@ -87,6 +119,19 @@ class SearchController
             'genres'     => $genres,
             'rating_min' => (int) ($_GET['rating_min'] ?? 0),
             'sort'       => $sort,
+
+            // Date de sortie (raw + bornes normalisées pour SearchService)
+            'release_preset' => $releasePreset,
+            'release_mode'   => $releaseMode,
+            'release_year_from'  => $releaseYearFrom,
+            'release_year_to'    => $releaseYearTo,
+            'release_month_from' => $releaseMonthFrom,
+            'release_month_to'   => $releaseMonthTo,
+            'release_date_from'  => $releaseDateFrom,
+            'release_date_to'    => $releaseDateTo,
+            'release_include_unknown' => $releaseIncludeUnknown ? 1 : 0,
+            'release_from'  => $releaseFrom,
+            'release_to'    => $releaseTo,
         ];
 
         $perPage = 42;
@@ -204,12 +249,33 @@ class SearchController
             $out['rating_min'] = $ratingMin;
         }
 
+        // Date de sortie : 1 seul "badge" (peu importe le niveau de précision)
+        $preset = trim((string) ($filters['release_preset'] ?? ''));
+        $hasCustom = false;
+        if ($preset === 'custom') {
+            foreach ([
+                'release_year_from', 'release_year_to',
+                'release_month_from', 'release_month_to',
+                'release_date_from', 'release_date_to',
+            ] as $k) {
+                if (trim((string) ($filters[$k] ?? '')) !== '') {
+                    $hasCustom = true;
+                    break;
+                }
+            }
+        }
+        $includeUnknown = !empty($filters['release_include_unknown']);
+        if ($preset !== '' || $hasCustom || $includeUnknown) {
+            $out['release'] = 1;
+        }
+
         return $out;
     }
 
     private function buildBaseUrl(array $filters): string
     {
         $params = [];
+        $releasePreset = trim((string) ($filters['release_preset'] ?? ''));
         foreach ($filters as $k => $v) {
             if ($k === 'q') {
                 $v = trim((string) $v);
@@ -237,6 +303,41 @@ class SearchController
             if ($k === 'genres') {
                 if (is_array($v) && !empty($v)) {
                     $params['genre'] = array_values($v); // devient genre[0]=...
+                }
+                continue;
+            }
+
+            // Date de sortie : conserver les champs d'UI (pas les bornes normalisées)
+            if ($k === 'release_from' || $k === 'release_to') {
+                continue;
+            }
+            if ($k === 'release_include_unknown') {
+                if (!empty($v)) {
+                    $params['release_include_unknown'] = 1;
+                }
+                continue;
+            }
+            if ($k === 'release_mode') {
+                if ($releasePreset === 'custom') {
+                    $sv = trim((string) $v);
+                    if ($sv !== '') $params['release_mode'] = $sv;
+                }
+                continue;
+            }
+            if (in_array($k, [
+                'release_preset',
+                'release_year_from', 'release_year_to',
+                'release_month_from', 'release_month_to',
+                'release_date_from', 'release_date_to',
+            ], true)) {
+                $sv = trim((string) $v);
+                if ($sv !== '') {
+                    // Ne conserver les champs détaillés que si on est en mode "custom"
+                    if ($k === 'release_preset') {
+                        $params[$k] = $sv;
+                    } elseif ($releasePreset === 'custom') {
+                        $params[$k] = $sv;
+                    }
                 }
                 continue;
             }
@@ -278,6 +379,102 @@ class SearchController
             }
         }
         return $map;
+    }
+
+    /**
+     * Calcule des bornes [from, to] (YYYY-MM-DD) à partir des paramètres UI.
+     *
+     * @return array{0:string,1:string}
+     */
+    private function resolveReleaseBounds(
+        string $preset,
+        string $mode,
+        string $yearFrom,
+        string $yearTo,
+        string $monthFrom,
+        string $monthTo,
+        string $dateFrom,
+        string $dateTo
+    ): array {
+        $from = '';
+        $to   = '';
+
+        $today = new \DateTimeImmutable('today');
+
+        if ($preset === '' ) {
+            return [$from, $to];
+        }
+
+        if ($preset !== 'custom') {
+            switch ($preset) {
+                case 'this_month': {
+                    $start = $today->modify('first day of this month');
+                    $end   = $today->modify('last day of this month');
+                    $from = $start->format('Y-m-d');
+                    $to   = $end->format('Y-m-d');
+                    break;
+                }
+                case 'last_3_months': {
+                    // Mois courant inclus : [début mois -2] → [fin mois courant]
+                    $start = $today->modify('first day of this month')->modify('-2 months');
+                    $end   = $today->modify('last day of this month');
+                    $from = $start->format('Y-m-d');
+                    $to   = $end->format('Y-m-d');
+                    break;
+                }
+                case 'this_year': {
+                    $y = (int) $today->format('Y');
+                    $from = sprintf('%04d-01-01', $y);
+                    $to   = sprintf('%04d-12-31', $y);
+                    break;
+                }
+                case 'last_year': {
+                    $y = (int) $today->format('Y') - 1;
+                    $from = sprintf('%04d-01-01', $y);
+                    $to   = sprintf('%04d-12-31', $y);
+                    break;
+                }
+                default:
+                    return ['', ''];
+            }
+            return [$from, $to];
+        }
+
+        // custom
+        if ($mode === 'year') {
+            $yf = preg_match('/^\d{4}$/', $yearFrom) ? (int) $yearFrom : 0;
+            $yt = preg_match('/^\d{4}$/', $yearTo) ? (int) $yearTo : 0;
+            if ($yf === 0 && $yt === 0) return ['', ''];
+            if ($yf === 0) $yf = $yt;
+            if ($yt === 0) $yt = $yf;
+            if ($yf > $yt) [$yf, $yt] = [$yt, $yf];
+            $from = sprintf('%04d-01-01', $yf);
+            $to   = sprintf('%04d-12-31', $yt);
+        } elseif ($mode === 'month') {
+            $mf = preg_match('/^\d{4}-\d{2}$/', $monthFrom) ? $monthFrom : '';
+            $mt = preg_match('/^\d{4}-\d{2}$/', $monthTo) ? $monthTo : '';
+            if ($mf === '' && $mt === '') return ['', ''];
+            if ($mf === '') $mf = $mt;
+            if ($mt === '') $mt = $mf;
+            if ($mf > $mt) [$mf, $mt] = [$mt, $mf];
+            $start = \DateTimeImmutable::createFromFormat('Y-m-d', $mf . '-01') ?: null;
+            $endBase = \DateTimeImmutable::createFromFormat('Y-m-d', $mt . '-01') ?: null;
+            if (!$start || !$endBase) return ['', ''];
+            $end = $endBase->modify('last day of this month');
+            $from = $start->format('Y-m-d');
+            $to   = $end->format('Y-m-d');
+        } else { // date
+            $df = preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateFrom) ? $dateFrom : '';
+            $dt = preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateTo) ? $dateTo : '';
+            if ($df === '' && $dt === '') return ['', ''];
+            if ($df === '') $df = $dt;
+            if ($dt === '') $dt = $df;
+            if ($df > $dt) [$df, $dt] = [$dt, $df];
+            $from = $df;
+            $to   = $dt;
+        }
+
+        return [$from, $to];
     }
 }
 

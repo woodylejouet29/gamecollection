@@ -21,8 +21,10 @@ use App\Data\PlatformBadgeColors;
 function colCoverSrc(?string $url): string
 {
     if (!$url) return '';
+    if (str_starts_with($url, '//')) return 'https:' . $url;
     if (str_starts_with($url, '/') || str_starts_with($url, 'http')) return $url;
-    return '/storage/images/igdb/' . $url;
+    // En mode "IGDB direct", on ne sert plus de fichiers locaux.
+    return '';
 }
 
 function colFmtDate(?string $date): string

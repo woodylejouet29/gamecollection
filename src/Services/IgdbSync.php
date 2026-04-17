@@ -41,6 +41,15 @@ class IgdbSync
     private const YEARS_PROGRESS_FILE = 'sync_years_progress.json';
 
     /**
+     * Plateformes IGDB à EXCLURE de l'import (IDs IGDB).
+     * Objectif: éviter de re-sync des jeux uniquement mobile/web.
+     *
+     * Mapping constaté dans ta table `platforms` (colonne igdb_id) :
+     * Android=34, iOS=39, BlackBerry OS=73, Windows Phone=74, Web browser=82, Windows Mobile=405
+     */
+    private const EXCLUDED_PLATFORM_IGDB_IDS = [34, 39, 73, 74, 82, 405];
+
+    /**
      * Champs IGDB ciblés — couvre toutes les données utiles sans sur-expansion.
      *
      * Principe : on utilise des champs précis plutôt que .* sur les sous-entités
@@ -422,6 +431,13 @@ APICALYPSE;
                 fn($g) => !isset($g['category']) || !in_array((int) $g['category'], self::EXCLUDED_CATEGORIES, true)
             ));
 
+            // Filtre plateformes : exclure les jeux qui n'ont QUE des plateformes non désirées.
+            // (On garde les jeux sans plateformes exploitables pour éviter de masquer des cas IGDB incomplets.)
+            $results = array_values(array_filter(
+                $results,
+                fn($g) => $this->hasAnyAllowedPlatformFromIgdbPayload($g)
+            ));
+
             // Télécharger toutes les jaquettes du lot en parallèle → Supabase
             $coverLocalMap = [];
             if ($withImages) {
@@ -474,7 +490,7 @@ APICALYPSE;
                     'title'             => (string)($g['name'] ?? 'Inconnu'),
                     'slug'              => (string)($g['slug'] ?? "game-{$gid}"),
                     ...$this->synopsisFieldsForUpsert($g['summary'] ?? null),
-                    'storyline'         => $g['storyline'] ?? null,
+                    // storyline volontairement ignoré (gain taille DB)
                     'cover_url'         => $localCover ?? $coverUrl,
                     'igdb_rating'       => isset($g['rating'])            ? round((float) $g['rating'], 2)            : null,
                     'igdb_rating_count' => isset($g['rating_count'])      ? (int) $g['rating_count']                  : null,
@@ -612,6 +628,11 @@ APICALYPSE;
                 $platformId = $igdbPlatformId
                     ? ($this->platformIdMap[(int) $igdbPlatformId] ?? null)
                     : null;
+
+                // Ne pas peupler game_platforms pour les plateformes exclues
+                if ($igdbPlatformId !== null && in_array((int) $igdbPlatformId, self::EXCLUDED_PLATFORM_IGDB_IDS, true)) {
+                    continue;
+                }
 
                 if (!$platformId) {
                     continue;
@@ -1011,6 +1032,11 @@ APICALYPSE;
             $gameId         = $igdbGameId     ? ($this->gameIdMap[(int) $igdbGameId]         ?? null) : null;
             $platformId     = $igdbPlatformId ? ($this->platformIdMap[(int) $igdbPlatformId] ?? null) : null;
 
+            // Ne pas sync les liaisons pour les plateformes exclues
+            if ($igdbPlatformId !== null && in_array((int) $igdbPlatformId, self::EXCLUDED_PLATFORM_IGDB_IDS, true)) {
+                continue;
+            }
+
             if (!$gameId || !$platformId) {
                 continue;
             }
@@ -1187,19 +1213,15 @@ APICALYPSE;
     // ──────────────────────────────────────────────
 
     /**
-     * Synopsis : zstd en base si {@see ZstdSynopsis::compressForSupabase} disponible, sinon TEXT classique.
+     * Synopsis : désactivé (colonnes supprimées) pour réduire la taille DB.
      *
      * @return array{synopsis: ?string, synopsis_zstd: ?string}
      */
     private function synopsisFieldsForUpsert(mixed $summary): array
     {
-        $plain = is_string($summary) && $summary !== '' ? $summary : null;
-        $hex   = ZstdSynopsis::compressForSupabase($plain);
-        if ($hex !== null) {
-            return ['synopsis' => null, 'synopsis_zstd' => $hex];
-        }
-
-        return ['synopsis' => $plain, 'synopsis_zstd' => null];
+        // Le projet peut choisir de ne pas stocker synopsis/storyline pour réduire la taille DB.
+        // On renvoie toujours null pour éviter d'écrire des colonnes susceptibles d'être supprimées.
+        return ['synopsis' => null, 'synopsis_zstd' => null];
     }
 
     private function upsertBatch(string $path, array $rows, string $onConflict = ''): void
@@ -1308,5 +1330,47 @@ APICALYPSE;
     public function getIgdbClient(): IgdbClient
     {
         return $this->igdb;
+    }
+
+    /**
+     * Retourne true si le jeu a au moins une plateforme "autorisée" dans la payload IGDB.
+     * - Si aucune plateforme n'est détectable, on retourne true (ne pas exclure par défaut).
+     */
+    private function hasAnyAllowedPlatformFromIgdbPayload(array $g): bool
+    {
+        $ids = [];
+
+        // 1) platforms (expandé)
+        foreach ($g['platforms'] ?? [] as $p) {
+            if (is_array($p) && isset($p['id']) && is_numeric($p['id'])) {
+                $ids[] = (int) $p['id'];
+            } elseif (is_int($p) || (is_string($p) && ctype_digit($p))) {
+                $ids[] = (int) $p;
+            }
+        }
+
+        // 2) release_dates.platform (fiable pour les jeux importés via dates)
+        foreach ($g['release_dates'] ?? [] as $rd) {
+            if (!is_array($rd)) continue;
+            $plat = $rd['platform'] ?? null;
+            if (is_array($plat) && isset($plat['id']) && is_numeric($plat['id'])) {
+                $ids[] = (int) $plat['id'];
+            } elseif (is_int($plat) || (is_string($plat) && ctype_digit($plat))) {
+                $ids[] = (int) $plat;
+            }
+        }
+
+        $ids = array_values(array_unique(array_filter($ids, static fn($x) => is_int($x) && $x > 0)));
+        if ($ids === []) {
+            return true; // payload incomplète → on ne filtre pas
+        }
+
+        foreach ($ids as $pid) {
+            if (!in_array($pid, self::EXCLUDED_PLATFORM_IGDB_IDS, true)) {
+                return true; // au moins une plateforme autorisée
+            }
+        }
+
+        return false; // uniquement des plateformes exclues
     }
 }

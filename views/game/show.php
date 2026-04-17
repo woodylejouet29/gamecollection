@@ -16,6 +16,7 @@
 
 use App\Data\PlatformAbbreviations;
 use App\Data\GenreTranslations;
+use App\Data\GenreIcons;
 use App\Data\PlatformBadgeColors;
 
 $game             = $game              ?? [];
@@ -31,6 +32,10 @@ $collectionCount  = (int) ($collection_count ?? 0);
 $authUser         = $authUser          ?? null;
 $collectionAddBlocked = (bool) ($collection_add_blocked ?? false);
 $collectionAddBlockedMessage = (string) ($collection_add_blocked_message ?? '');
+$similarGames     = $similar_games     ?? [];
+$similarGenres    = $similar_genres    ?? [];
+$similarGenres    = is_array($similarGenres) ? $similarGenres : [];
+$similarGenres    = array_values(array_filter(array_map('strval', $similarGenres), fn($x) => trim($x) !== ''));
 
 $rawIgdb     = $game['raw_igdb']    ?? [];
 $genres      = $game['genres']      ?? [];
@@ -38,8 +43,6 @@ $screenshots = $game['screenshots'] ?? [];
 $videos      = $game['videos']      ?? [];
 
 $title       = $game['title']       ?? '';
-$synopsis    = $game['synopsis']    ?? '';
-$storyline   = $game['storyline']   ?? '';
 $developer   = $game['developer']   ?? '';
 $publisher   = $game['publisher']   ?? '';
 $releaseDate = $game['release_date'] ?? '';
@@ -171,9 +174,9 @@ function platformLabel(array $p): string
                     <img class="game-hero__cover"
                          src="<?= htmlspecialchars(gameCoverBig($coverUrl)) ?>"
                          alt="Jaquette — <?= htmlspecialchars($title) ?>"
-                         width="220" height="293">
+                         width="190" height="253">
                 <?php else: ?>
-                    <div class="game-hero__cover game-hero__cover--empty">
+                    <div class="game-hero__cover game-hero__cover--empty" aria-hidden="true">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                             <rect x="3" y="3" width="18" height="18" rx="3"/>
                             <path d="M12 8v8M8 12h8"/>
@@ -184,7 +187,8 @@ function platformLabel(array $p): string
                 <?php if ($igdbRating !== null): ?>
                     <div class="game-hero__score"
                          title="Note IGDB : <?= round($igdbRating) ?>/100"
-                         style="--sc: <?= scoreColor($igdbRating) ?>">
+                         style="--sc: <?= scoreColor($igdbRating) ?>"
+                         aria-label="Note IGDB : <?= round($igdbRating) ?> sur 100">
                         <?= round($igdbRating) ?>
                     </div>
                 <?php endif; ?>
@@ -245,9 +249,10 @@ function platformLabel(array $p): string
 
                 <?php /* Badges notes */ ?>
                 <?php if ($igdbRating !== null || $aggrRating !== null || $avgReview !== null): ?>
-                    <div class="game-hero__ratings">
+                    <div class="game-hero__ratings" role="list" aria-label="Notes">
                         <?php if ($igdbRating !== null): ?>
-                            <div class="rating-badge" title="Note IGDB (utilisateurs)">
+                            <div class="rating-badge" role="listitem" title="Note IGDB (utilisateurs)"
+                                 aria-label="Note IGDB : <?= round($igdbRating) ?>/100">
                                 <span class="rating-badge__val" style="color:<?= scoreColor($igdbRating) ?>">
                                     <?= round($igdbRating) ?>
                                 </span>
@@ -255,7 +260,8 @@ function platformLabel(array $p): string
                             </div>
                         <?php endif; ?>
                         <?php if ($aggrRating !== null): ?>
-                            <div class="rating-badge" title="Note agrégée presse">
+                            <div class="rating-badge" role="listitem" title="Note agrégée presse"
+                                 aria-label="Note presse agrégée : <?= round($aggrRating) ?>/100">
                                 <span class="rating-badge__val" style="color:<?= scoreColor($aggrRating) ?>">
                                     <?= round($aggrRating) ?>
                                 </span>
@@ -263,7 +269,8 @@ function platformLabel(array $p): string
                             </div>
                         <?php endif; ?>
                         <?php if ($avgReview !== null): ?>
-                            <div class="rating-badge" title="Note des membres PlayShelf">
+                            <div class="rating-badge" role="listitem" title="Note des membres"
+                                 aria-label="Note des membres : <?= number_format($avgReview, 1) ?>/10">
                                 <span class="rating-badge__val" style="color:<?= scoreColor($avgReview * 10) ?>">
                                     <?= number_format($avgReview, 1) ?>
                                 </span>
@@ -303,15 +310,22 @@ function platformLabel(array $p): string
                             <?php endif; ?>
                         </button>
                         <?php endif; ?>
-                        <button class="btn btn--ghost btn--wishlist <?= $isWishlisted ? 'is-active' : '' ?>"
+                        <?php
+                            $wishlistDisabled = $collectionCount > 0;
+                            $wishlistLabel = $wishlistDisabled
+                                ? 'Déjà dans ma collection'
+                                : ($isWishlisted ? 'Dans ma wishlist' : 'Je veux');
+                        ?>
+                        <button class="btn btn--ghost btn--wishlist <?= (!$wishlistDisabled && $isWishlisted) ? 'is-active' : '' ?>"
                                 id="btn-wishlist"
-                                data-game-id="<?= (int) ($game['id'] ?? 0) ?>">
+                                data-game-id="<?= (int) ($game['id'] ?? 0) ?>"
+                                <?= $wishlistDisabled ? 'disabled aria-disabled="true" title="Déjà dans ma collection"' : '' ?>>
                             <svg class="wishlist-icon" viewBox="0 0 24 24"
-                                 fill="<?= $isWishlisted ? 'currentColor' : 'none' ?>"
+                                 fill="<?= (!$wishlistDisabled && $isWishlisted) ? 'currentColor' : 'none' ?>"
                                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                 <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
                             </svg>
-                            <span class="wishlist-label"><?= $isWishlisted ? 'Dans ma wishlist' : "Je veux" ?></span>
+                            <span class="wishlist-label"><?= htmlspecialchars($wishlistLabel) ?></span>
                             <?php if ($wishlistCount > 0): ?>
                                 <span class="wishlist-count" id="wishlist-count"><?= $wishlistCount ?></span>
                             <?php endif; ?>
@@ -429,6 +443,15 @@ function platformLabel(array $p): string
                             tabindex="-1">
                         Avis
                     </button>
+                    <button class="game-tab" type="button"
+                            role="tab"
+                            id="game-tab-similar"
+                            data-tab="similar"
+                            aria-selected="false"
+                            aria-controls="game-tabpanel-similar"
+                            tabindex="-1">
+                        Jeux similaires
+                    </button>
                 </div>
 
                 <div class="game-tabs__panels">
@@ -438,20 +461,33 @@ function platformLabel(array $p): string
                          data-panel="overview"
                          aria-labelledby="game-tab-overview">
 
-                        <?php /* Synopsis */ ?>
-                        <?php if ($synopsis || $storyline): ?>
+                        <?php /* Synopsis retiré (colonnes supprimées pour réduire la DB) */ ?>
+
+                        <?php /* Galerie de screenshots */ ?>
+                        <?php if (!empty($screenshots)): ?>
                         <section class="game-section">
-                            <h2 class="game-section__title">Synopsis</h2>
-                            <?php if ($synopsis): ?>
-                                <div class="game-synopsis"><?= nl2br(htmlspecialchars($synopsis)) ?></div>
-                            <?php endif; ?>
-                            <?php if ($storyline && $storyline !== $synopsis): ?>
-                                <div class="game-synopsis game-synopsis--story"><?= nl2br(htmlspecialchars($storyline)) ?></div>
-                            <?php endif; ?>
+                            <h2 class="game-section__title">Galerie</h2>
+                            <div class="game-gallery" id="game-gallery" data-lightbox-gallery>
+                                <?php foreach ($screenshots as $i => $shot):
+                                    $shotUrl = is_array($shot) ? ($shot['url'] ?? '') : $shot;
+                                    $thumb   = gameThumb($shotUrl, 't_screenshot_med');
+                                    $full    = gameThumb($shotUrl, 't_screenshot_huge');
+                                    if (!$thumb) continue;
+                                ?>
+                                    <button class="game-gallery__thumb" type="button"
+                                            data-index="<?= $i ?>"
+                                            data-full="<?= htmlspecialchars($full) ?>"
+                                            aria-label="Voir screenshot <?= $i + 1 ?>">
+                                        <img src="<?= htmlspecialchars($thumb) ?>"
+                                             alt="Screenshot <?= $i + 1 ?>"
+                                             loading="lazy">
+                                    </button>
+                                <?php endforeach; ?>
+                            </div>
                         </section>
                         <?php endif; ?>
 
-                        <?php /* Vidéos (desktop : entre synopsis et galerie) */ ?>
+                        <?php /* Vidéos (desktop) */ ?>
                         <div class="game-videos-desktop">
                             <section class="game-section">
                                 <div class="game-section__header">
@@ -493,30 +529,6 @@ function platformLabel(array $p): string
                                 <?php endif; ?>
                             </section>
                         </div>
-
-                        <?php /* Galerie de screenshots */ ?>
-                        <?php if (!empty($screenshots)): ?>
-                        <section class="game-section">
-                            <h2 class="game-section__title">Galerie</h2>
-                            <div class="game-gallery" id="game-gallery" data-lightbox-gallery>
-                                <?php foreach ($screenshots as $i => $shot):
-                                    $shotUrl = is_array($shot) ? ($shot['url'] ?? '') : $shot;
-                                    $thumb   = gameThumb($shotUrl, 't_screenshot_med');
-                                    $full    = gameThumb($shotUrl, 't_screenshot_huge');
-                                    if (!$thumb) continue;
-                                ?>
-                                    <button class="game-gallery__thumb" type="button"
-                                            data-index="<?= $i ?>"
-                                            data-full="<?= htmlspecialchars($full) ?>"
-                                            aria-label="Voir screenshot <?= $i + 1 ?>">
-                                        <img src="<?= htmlspecialchars($thumb) ?>"
-                                             alt="Screenshot <?= $i + 1 ?>"
-                                             loading="lazy">
-                                    </button>
-                                <?php endforeach; ?>
-                            </div>
-                        </section>
-                        <?php endif; ?>
                     </div>
 
                     <div class="game-tabpanel"
@@ -553,8 +565,14 @@ function platformLabel(array $p): string
                                                 <?php foreach ($genres as $g):
                                                     $gn = is_array($g) ? ($g['name'] ?? '') : '';
                                                     if (!$gn) continue;
+                                                    $gIcon = GenreIcons::url($gn);
                                                 ?>
-                                                    <span class="info-tag"><?= htmlspecialchars(GenreTranslations::translate($gn)) ?></span>
+                                                    <span class="info-tag info-tag--genre">
+                                                        <?php if ($gIcon): ?>
+                                                            <img class="info-tag__icon" src="<?= htmlspecialchars($gIcon) ?>" alt="" width="14" height="14" decoding="async" loading="lazy">
+                                                        <?php endif; ?>
+                                                        <span class="info-tag__text"><?= htmlspecialchars(GenreTranslations::translate($gn)) ?></span>
+                                                    </span>
                                                 <?php endforeach; ?>
                                             </div>
                                         </dd>
@@ -833,7 +851,7 @@ function platformLabel(array $p): string
                             <div class="game-section__header">
                                 <h2 class="game-section__title">Avis des membres</h2>
                                 <?php if ($avgReview !== null): ?>
-                                    <div class="reviews-summary">
+                                    <div class="reviews-summary" aria-label="Note moyenne : <?= number_format($avgReview, 1) ?>/10">
                                         <span class="reviews-summary__score"
                                               style="color:<?= scoreColor($avgReview * 10) ?>">
                                             <?= number_format($avgReview, 1) ?>
@@ -858,19 +876,28 @@ function platformLabel(array $p): string
                                                          src="<?= htmlspecialchars($reviewer['avatar_url']) ?>"
                                                          alt="" loading="lazy">
                                                 <?php else: ?>
-                                                    <span class="review-card__avatar review-card__avatar--placeholder">
+                                                    <span class="review-card__avatar review-card__avatar--placeholder"
+                                                          aria-hidden="true">
                                                         <?= strtoupper(substr($reviewer['username'] ?? 'M', 0, 1)) ?>
                                                     </span>
                                                 <?php endif; ?>
                                                 <div class="review-card__user">
-                                                    <strong><?= htmlspecialchars($reviewer['username'] ?? 'Membre') ?></strong>
+                                                    <?php $rSlug = htmlspecialchars($reviewer['slug'] ?? ''); ?>
+                                                    <?php if ($rSlug): ?>
+                                                        <a href="/user/<?= $rSlug ?>" style="text-decoration:none;color:inherit">
+                                                            <strong><?= htmlspecialchars($reviewer['username'] ?? 'Membre') ?></strong>
+                                                        </a>
+                                                    <?php else: ?>
+                                                        <strong><?= htmlspecialchars($reviewer['username'] ?? 'Membre') ?></strong>
+                                                    <?php endif; ?>
                                                     <time class="review-card__date"
                                                           datetime="<?= htmlspecialchars(substr($rev['created_at'] ?? '', 0, 10)) ?>">
                                                         <?= fmtGameDate(substr($rev['created_at'] ?? '', 0, 10)) ?>
                                                     </time>
                                                 </div>
                                                 <div class="review-card__rating"
-                                                     style="--r: <?= scoreColor($rating * 10) ?>">
+                                                     style="--r: <?= scoreColor($rating * 10) ?>"
+                                                     aria-label="Note : <?= $rating ?> sur 10">
                                                     <span><?= $rating ?></span><em>/10</em>
                                                 </div>
                                             </div>
@@ -893,6 +920,70 @@ function platformLabel(array $p): string
                                             <a href="/register" class="text-link">Créez un compte</a> pour laisser un avis après avoir terminé ce jeu.
                                         </p>
                                     <?php endif; ?>
+                                </div>
+                            <?php endif; ?>
+                        </section>
+                    </div>
+
+                    <div class="game-tabpanel"
+                         role="tabpanel"
+                         id="game-tabpanel-similar"
+                         data-panel="similar"
+                         aria-labelledby="game-tab-similar"
+                         tabindex="-1">
+                        <section class="game-section game-section--similar">
+                            <div class="game-section__header">
+                                <h2 class="game-section__title">Jeux similaires</h2>
+                            </div>
+
+                            <?php if (!empty($similarGames) && is_array($similarGames)): ?>
+                                <div class="games-scroll-wrapper" data-scroll-row>
+                                    <button class="games-scroll-nav games-scroll-nav--prev is-hidden" type="button" aria-label="Précédent">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                                            <path d="M15 18l-6-6 6-6"/>
+                                        </svg>
+                                    </button>
+                                    <div class="games-scroll">
+                                        <div class="games-scroll__track">
+                                            <?php foreach (array_slice($similarGames, 0, 18) as $sg):
+                                                $src = gameSrc($sg['cover_url'] ?? null);
+                                            ?>
+                                                <a href="/game/<?= htmlspecialchars($sg['slug'] ?? '') ?>"
+                                                   class="game-card-mini"
+                                                   title="<?= htmlspecialchars($sg['title'] ?? '') ?>">
+                                                    <div class="game-card-mini__cover">
+                                                        <div class="game-card-mini__cover-placeholder" aria-hidden="true">
+                                                            <?= htmlspecialchars(mb_substr($sg['title'] ?? '?', 0, 30)) ?>
+                                                        </div>
+                                                        <?php if ($src): ?>
+                                                            <img src="<?= htmlspecialchars($src) ?>"
+                                                                 alt="<?= htmlspecialchars($sg['title'] ?? '') ?>"
+                                                                 loading="lazy"
+                                                                 width="130" height="170"
+                                                                 onerror="this.style.display='none'">
+                                                        <?php endif; ?>
+                                                    </div>
+                                                    <div class="game-card-mini__info">
+                                                        <span class="game-card-mini__title"><?= htmlspecialchars($sg['title'] ?? '') ?></span>
+                                                    </div>
+                                                </a>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    </div>
+                                    <button class="games-scroll-nav games-scroll-nav--next" type="button" aria-label="Suivant">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                                            <path d="M9 18l6-6-6-6"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            <?php else: ?>
+                                <div class="game-empty">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                                        <path d="M4 6h16M4 10h12M4 14h8"/>
+                                    </svg>
+                                    <p>
+                                        Aucun jeu similaire trouvé<?= !empty($similarGenres) ? ' pour ces genres : ' . htmlspecialchars(implode(', ', array_map([GenreTranslations::class, 'translate'], $similarGenres))) : '' ?>.
+                                    </p>
                                 </div>
                             <?php endif; ?>
                         </section>
@@ -933,8 +1024,14 @@ function platformLabel(array $p): string
                                 <?php foreach ($genres as $g):
                                     $gn = is_array($g) ? ($g['name'] ?? '') : '';
                                     if (!$gn) continue;
+                                    $gIcon = GenreIcons::url($gn);
                                 ?>
-                                    <span class="info-tag"><?= htmlspecialchars(GenreTranslations::translate($gn)) ?></span>
+                                    <span class="info-tag info-tag--genre">
+                                        <?php if ($gIcon): ?>
+                                            <img class="info-tag__icon" src="<?= htmlspecialchars($gIcon) ?>" alt="" width="14" height="14" decoding="async" loading="lazy">
+                                        <?php endif; ?>
+                                        <span class="info-tag__text"><?= htmlspecialchars(GenreTranslations::translate($gn)) ?></span>
+                                    </span>
                                 <?php endforeach; ?>
                             </div>
                         </dd>
@@ -1235,4 +1332,3 @@ function platformLabel(array $p): string
         <div class="video-embed-wrap" id="video-embed-container"></div>
     </div>
 </div>
-

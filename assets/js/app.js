@@ -255,6 +255,25 @@
     return { res, data };
   }
 
+  function disableOwnedBadges(root, ownedIds) {
+    if (!ownedIds || ownedIds.size === 0) return;
+    const scope = root && root.querySelectorAll ? root : document;
+    const btns = Array.from(scope.querySelectorAll('[data-action="wishlist-toggle"]'));
+    btns.forEach(btn => {
+      const gid = parseInt(btn.getAttribute('data-game-id') || '0', 10) || 0;
+      if (!gid) return;
+      if (!ownedIds.has(gid)) return;
+      btn.classList.add('is-disabled');
+      btn.classList.remove('is-active');
+      btn.classList.remove('is-busy');
+      btn.disabled = true;
+      btn.setAttribute('aria-disabled', 'true');
+      btn.setAttribute('aria-pressed', 'false');
+      btn.setAttribute('title', 'Déjà dans ma collection');
+      btn.setAttribute('aria-label', 'Déjà dans ma collection');
+    });
+  }
+
   async function syncWishlistBadges(root) {
     const scope = root && root.querySelectorAll ? root : document;
     const btns = Array.from(scope.querySelectorAll('[data-action="wishlist-toggle"]'));
@@ -266,22 +285,29 @@
     if (ids.length === 0) return;
 
     try {
-      const out = await postJson('/api/wishlist/check', { game_ids: ids });
-      if (!out) return;
-      const { res, data } = out;
-      if (!res.ok || !data || data.success !== true) return;
+      const [wishOut, ownedOut] = await Promise.all([
+        postJson('/api/wishlist/check', { game_ids: ids }),
+        postJson('/api/collection/check', { game_ids: ids }),
+      ]);
 
-      const wishlisted = new Set((data.data && data.data.game_ids) ? data.data.game_ids.map(Number) : []);
-      btns.forEach(btn => {
-        const gid = parseInt(btn.getAttribute('data-game-id') || '0', 10) || 0;
-        if (!gid) return;
-        const active = wishlisted.has(gid);
-        btn.classList.toggle('is-active', active);
-        btn.setAttribute('aria-pressed', String(active));
-        const title = active ? 'Retirer de ma wishlist' : 'Ajouter à ma wishlist';
-        btn.setAttribute('title', title);
-        btn.setAttribute('aria-label', title);
-      });
+      if (wishOut && wishOut.res.ok && wishOut.data && wishOut.data.success === true) {
+        const wishlisted = new Set((wishOut.data.data && wishOut.data.data.game_ids) ? wishOut.data.data.game_ids.map(Number) : []);
+        btns.forEach(btn => {
+          const gid = parseInt(btn.getAttribute('data-game-id') || '0', 10) || 0;
+          if (!gid) return;
+          const active = wishlisted.has(gid);
+          btn.classList.toggle('is-active', active);
+          btn.setAttribute('aria-pressed', String(active));
+          const title = active ? 'Retirer de ma wishlist' : 'Ajouter à ma wishlist';
+          btn.setAttribute('title', title);
+          btn.setAttribute('aria-label', title);
+        });
+      }
+
+      if (ownedOut && ownedOut.res.ok && ownedOut.data && ownedOut.data.success === true) {
+        const owned = new Set((ownedOut.data.data && ownedOut.data.data.game_ids) ? ownedOut.data.data.game_ids.map(Number) : []);
+        disableOwnedBadges(root, owned);
+      }
     } catch {
       // silent: si l'utilisateur n'est pas connecté ou en cas d'erreur réseau, on ne bloque pas l'UI
     }

@@ -69,10 +69,6 @@ function navActiveClass(string $currentPath, string $prefix): string {
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
                 Rechercher
             </a>
-            <a href="/agenda"     class="header__nav-link<?= navActive($currentPath, '/agenda') ?>">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-                Agenda
-            </a>
             <?php if ($authUser): ?>
             <a href="/collection" class="header__nav-link<?= navActive($currentPath, '/collection') ?>">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
@@ -209,10 +205,6 @@ function navActiveClass(string $currentPath, string $prefix): string {
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
                 Rechercher
             </a>
-            <a href="/agenda" class="header__drawer-link<?= navActiveClass($currentPath, '/agenda') ?>">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-                Agenda
-            </a>
             <?php if ($authUser): ?>
             <a href="/collection" class="header__drawer-link<?= navActiveClass($currentPath, '/collection') ?>">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
@@ -276,10 +268,6 @@ function navActiveClass(string $currentPath, string $prefix): string {
     <a href="/search" class="bottom-nav__item<?= navActiveClass($currentPath, '/search') ?>">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
         <span>Catalogue</span>
-    </a>
-    <a href="/agenda" class="bottom-nav__item<?= navActiveClass($currentPath, '/agenda') ?>">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-        <span>Agenda</span>
     </a>
     <?php if ($authUser): ?>
     <a href="/collection" class="bottom-nav__item<?= navActiveClass($currentPath, '/collection') ?>">

@@ -45,5 +45,36 @@ final class GenreTranslations
         }
         return self::MAP[$k] ?? $k;
     }
+
+    /**
+     * Résout un libellé affiché ou stocké (EN IGDB, ou FR issu de translate())
+     * vers la clé anglaise IGDB, si elle est connue.
+     */
+    public static function resolveToIgdbEnglish(?string $label): ?string
+    {
+        $k = trim((string) $label);
+        if ($k === '') {
+            return null;
+        }
+        $kn = self::normalizeGenreLabel($k);
+        if (isset(self::MAP[$k])) {
+            return $k;
+        }
+        if (isset(self::MAP[$kn])) {
+            return $kn;
+        }
+        foreach (self::MAP as $en => $fr) {
+            $frn = self::normalizeGenreLabel($fr);
+            if ($fr === $k || $fr === $kn || $frn === $k || $frn === $kn) {
+                return $en;
+            }
+        }
+        return null;
+    }
+
+    private static function normalizeGenreLabel(string $s): string
+    {
+        return str_replace(["\u{2019}", "\u{2018}", "\u{201A}"], "'", $s);
+    }
 }
 

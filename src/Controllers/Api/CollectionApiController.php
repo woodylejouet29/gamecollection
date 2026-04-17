@@ -228,6 +228,47 @@ class CollectionApiController
         ], $httpStatus);
     }
 
+    /**
+     * POST /api/collection/check
+     *
+     * Corps JSON : { "game_ids": [1,2,3] }
+     * Réponse : { "success": true, "data": { "game_ids": [ ... ] } }
+     */
+    public function check(): void
+    {
+        // Invités : réponse vide sans 302 vers /login (pages catalogue /search, etc.).
+        if (empty($_SESSION['auth'])) {
+            $this->json(['success' => true, 'data' => ['game_ids' => []]]);
+        }
+        AuthMiddleware::requireAuth();
+
+        $userId = AuthMiddleware::userId();
+        if (!$userId) {
+            $this->json(['success' => false, 'error' => ['code' => 'UNAUTHORIZED']], 401);
+        }
+
+        $raw = file_get_contents('php://input');
+        $input = json_decode($raw ?: '{}', true);
+
+        $ids = $input['game_ids'] ?? [];
+        if (!is_array($ids)) {
+            $this->json(['success' => false, 'error' => ['code' => 'VALIDATION_ERROR', 'message' => 'game_ids invalide.']], 422);
+        }
+
+        // Limite raisonnable (évite payloads énormes)
+        $ids = array_slice($ids, 0, 200);
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn($x) => $x > 0)));
+
+        try {
+            $service = new CollectionService();
+            $inCollection = $service->gameIdsInCollection($userId, $ids);
+            $this->json(['success' => true, 'data' => ['game_ids' => $inCollection]]);
+        } catch (\Throwable $e) {
+            Logger::warning('Collection check error', ['error' => $e->getMessage()]);
+            $this->json(['success' => false, 'error' => ['code' => 'SERVER_ERROR', 'message' => 'Erreur interne.']], 500);
+        }
+    }
+
     // ──────────────────────────────────────────────────────────────────
     //  Helpers
     // ──────────────────────────────────────────────────────────────────

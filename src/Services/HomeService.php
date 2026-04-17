@@ -13,6 +13,17 @@ use Throwable;
  */
 class HomeService
 {
+    /** Plateformes à exclure (IDs locaux, colonne `platforms.id`). */
+    private const EXCLUDED_PLATFORM_IDS = [28, 32, 61, 62, 68, 183];
+    /** Filet de sécurité si `igdb_id` est absent/null. */
+    private const EXCLUDED_PLATFORM_NAMES = [
+        'android',
+        'ios',
+        'blackberry os',
+        'windows phone',
+        'web browser',
+        'windows mobile',
+    ];
     private Client $http;
     private string $supabaseUrl;
     private string $serviceKey;
@@ -46,13 +57,14 @@ class HomeService
         $data = [
             // Les clés "datées" évitent les effets de bord (année/jour) et réduisent les recalculs inutiles.
             // 1er param = label Server-Timing (stable), cache_key = suffixée si nécessaire.
-            'mostAwaitedGames' => $this->cached('most_awaited', fn() => $this->fetchMostAwaitedGames(), 3600, 86400, 'most_awaited_v1'),
+            'mostAwaitedGames' => $this->cached('most_awaited', fn() => $this->fetchMostAwaitedGames(), 3600, 86400, 'most_awaited_v2'),
             'mostAddedGames'   => $this->cached('most_added', fn() => $this->fetchMostAddedGames(), 3600, 86400, 'most_added_v1'),
             'topRatedGames'   => $this->cached('top_rated_year', fn() => $this->fetchTopRatedThisYear(), 21600, 259200, 'top_rated_year_' . date('Y')), // 6h fresh, 72h stale
             'todayGames'      => $this->cached('today_games', fn() => $this->fetchTodayGames(), 600, 21600, 'today_games_' . date('Y-m-d')), // 10m fresh, 6h stale
             'latestReviews'   => $this->cached('latest_reviews', fn() => $this->fetchLatestReviews(), 120, 1800),
             'genreHighlights' => $this->cached('genre_highlights', fn() => $this->fetchGenreHighlights(), 43200, 259200, 'genre_highlights_v2'), // 12h fresh, 72h stale
-            'topPlatforms'    => $this->cached('top_platforms', fn() => $this->fetchTopPlatforms(), 86400, 604800),
+            // bump cache key après exclusion mobile/web
+            'topPlatforms'    => $this->cached('top_platforms', fn() => $this->fetchTopPlatforms(), 86400, 604800, 'top_platforms_v3'),
             'stats'           => $this->cached('stats', fn() => $this->fetchStats(), 1800, 21600),
         ];
 
@@ -145,10 +157,28 @@ class HomeService
     /** Plateformes récentes triées par génération décroissante. */
     private function fetchTopPlatforms(): array
     {
-        return $this->get(
-            "/rest/v1/platforms?select=id,name,abbreviation,logo_url,generation"
-            . "&generation=not.is.null&order=generation.desc&limit=16"
+        $rows = $this->get(
+            "/rest/v1/platforms?select=id,igdb_id,name,abbreviation,logo_url,generation"
+            . "&generation=not.is.null&order=generation.desc&limit=50"
         );
+
+        // Exclure les plateformes mobile/web (et garder 16 items après filtrage)
+        $out = [];
+        foreach ($rows as $p) {
+            if (!is_array($p)) continue;
+            $id = isset($p['id']) && is_numeric($p['id']) ? (int) $p['id'] : 0;
+            if ($id > 0 && in_array($id, self::EXCLUDED_PLATFORM_IDS, true)) {
+                continue;
+            }
+            $name = isset($p['name']) ? mb_strtolower(trim((string) $p['name'])) : '';
+            if ($name !== '' && in_array($name, self::EXCLUDED_PLATFORM_NAMES, true)) {
+                continue;
+            }
+            $out[] = $p;
+            if (count($out) >= 16) break;
+        }
+
+        return $out;
     }
 
     /** Comptages globaux : membres, jeux, entrées collection, avis. */
@@ -193,7 +223,16 @@ class HomeService
      */
     private function fetchMostAwaitedGames(): array
     {
-        return $this->fetchTopGamesByTableCounts('wishlist', 12000, 16);
+        // "Les plus attendus" = wishlist + date de sortie non dépassée (>= aujourd'hui).
+        // On prend un top plus large puis on filtre, pour garder ~16 items même si certains jeux sont déjà sortis.
+        $today = date('Y-m-d');
+        $rows = $this->fetchTopGamesByTableCounts('wishlist', 12000, 64);
+        $rows = array_values(array_filter($rows, static function (array $g) use ($today): bool {
+            $d = trim((string) ($g['release_date'] ?? ''));
+            if ($d === '') return false; // pas de date => pas "attendu"
+            return $d >= $today;
+        }));
+        return array_slice($rows, 0, 16);
     }
 
     /**

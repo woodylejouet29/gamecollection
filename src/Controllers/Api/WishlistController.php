@@ -66,6 +66,10 @@ class WishlistController
      */
     public function check(): void
     {
+        // Invités : pas de redirection (évite d’expulser /search et autres pages publiques depuis app.js).
+        if (empty($_SESSION['auth'])) {
+            $this->json(['success' => true, 'data' => ['game_ids' => []]]);
+        }
         AuthMiddleware::requireAuth();
 
         $userId = AuthMiddleware::userId();

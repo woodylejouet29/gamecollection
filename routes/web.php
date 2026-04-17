@@ -52,6 +52,7 @@ $router->get('/game/{slug}', [App\Controllers\GameController::class, 'show']);
 $router->get('/select',  [App\Controllers\SelectController::class, 'index']);
 
 $router->post('/api/collection/add',         [App\Controllers\Api\CollectionApiController::class, 'add']);
+$router->post('/api/collection/check',       [App\Controllers\Api\CollectionApiController::class, 'check']);
 $router->post('/api/select/check-duplicate', [App\Controllers\Api\SelectApiController::class,    'checkDuplicate']);
 $router->post('/api/uploads/selection-photo',[App\Controllers\Api\UploadApiController::class,    'uploadSelectionPhoto']);
 

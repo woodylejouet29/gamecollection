@@ -120,6 +120,21 @@ ul, ol { list-style: none; }
     color: #0f0e17; /* icône noire */
     border-color: rgba(0, 0, 0, .12);
 }
+.wish-badge.is-disabled,
+.wish-badge:disabled,
+.wish-badge[disabled] {
+    opacity: .45;
+    cursor: not-allowed;
+    transform: none;
+    filter: grayscale(.55);
+    box-shadow: none;
+}
+.wish-badge.is-disabled:hover,
+.wish-badge:disabled:hover,
+.wish-badge[disabled]:hover {
+    transform: none;
+    filter: grayscale(.55);
+}
 .wish-badge.is-busy { opacity: .65; cursor: not-allowed; transform: none; }
 .wish-badge:focus-visible { outline: 0; box-shadow: 0 0 0 3px rgba(239,68,68,.25), 0 10px 26px rgba(0,0,0,.35); }
 

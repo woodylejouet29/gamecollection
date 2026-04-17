@@ -22,8 +22,10 @@ if (!function_exists('searchCoverSrc')) {
     function searchCoverSrc(?string $url): string
     {
         if (!$url) return '';
+        if (str_starts_with($url, '//')) return 'https:' . $url;
         if (str_starts_with($url, '/') || str_starts_with($url, 'http')) return $url;
-        return '/storage/images/igdb/' . $url;
+        // En mode "IGDB direct", on ne sert plus de fichiers locaux.
+        return '';
     }
 }
 if (!function_exists('searchFmtDate')) {
@@ -65,6 +67,7 @@ $platformBadgeStyle = static function (int $id) use ($platformMap): string {
 $sortOptions = [
     'recent'     => 'Plus récents',
     'upcoming'   => 'Prochaines sorties',
+    'release_asc' => 'Date (croissant)',
     'rating'     => 'Mieux notés',
 ];
 

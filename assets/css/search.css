@@ -379,6 +379,78 @@
 }
 
 /* ──────────────────────────────────────────────
+   Filtre "Date de sortie" (presets + personnalisé)
+   ────────────────────────────────────────────── */
+
+.search-release {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+
+.search-release__advanced {
+    background: color-mix(in srgb, var(--surface-2) 60%, transparent);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0.75rem;
+}
+
+.search-release__modes {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.65rem;
+    flex-wrap: wrap;
+}
+
+.search-release__mode {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.35rem 0.6rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text-2);
+    font-weight: 700;
+    font-size: 0.8rem;
+    cursor: pointer;
+    user-select: none;
+}
+.search-release__mode input { accent-color: var(--accent); }
+
+.search-release__row {
+    display: grid;
+    /* Permet aux champs de rétrécir sans déborder (sinon overflow sur mobile) */
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0.65rem;
+}
+
+.search-release__field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 0;
+}
+
+.search-release__field-label {
+    font-size: 0.72rem;
+    color: var(--text-3);
+    font-weight: 700;
+}
+
+.search-release__checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-2);
+    font-weight: 650;
+    cursor: pointer;
+    user-select: none;
+}
+.search-release__checkbox input { accent-color: var(--accent); }
+
+/* ──────────────────────────────────────────────
    Tag pickers (plateformes / genres) — multi-select
    Reprend le style des champs + badges existants
    ────────────────────────────────────────────── */
@@ -409,6 +481,19 @@
     letter-spacing: 0.01em;
     max-width: 100%;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.search-tag-picker__tag-icon {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    object-fit: contain;
+}
+
+.search-tag-picker__tag-label {
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
 }
@@ -475,13 +560,30 @@
 }
 
 .search-tag-picker__suggestion {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
     padding: 0.55rem 0.85rem;
     cursor: pointer;
-    font-size: 0.86rem;
+    font-size: 0.76rem;
     font-weight: 650;
     color: var(--text);
     transition: background 0.12s;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.search-tag-picker__suggestion-icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    object-fit: contain;
+}
+
+.search-tag-picker__suggestion-label {
+    min-width: 0;
+    flex: 1;
     overflow: hidden;
     text-overflow: ellipsis;
 }
@@ -687,7 +789,7 @@
     border-radius: 999px;
     background: color-mix(in srgb, var(--accent) 22%, transparent);
     border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
-    color: var(--accent-3);
+    color: var(--text-2);
     font-size: 0.62rem;
     font-weight: 700;
     white-space: nowrap;
@@ -805,6 +907,13 @@
 .search-card__rating--high { background: var(--rating-high-bg); color: #fff; }
 .search-card__rating--mid  { background: var(--rating-mid-bg);  color: #fff; }
 .search-card__rating--low  { background: var(--rating-low-bg);  color: #fff; }
+
+/* En vues "grille" et "cartes" : badge note en haut à droite */
+.game-grid--grid .search-card__rating,
+.game-grid--cards .search-card__rating {
+    left: auto;
+    right: 7px;
+}
 
 /* Bouton "+" */
 .search-card__add-btn {

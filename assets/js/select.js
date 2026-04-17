@@ -67,8 +67,10 @@ function storageSave(items) {
 
 function coverSrc(url) {
     if (!url) return '';
+    if (url.startsWith('//')) return 'https:' + url;
     if (url.startsWith('/') || url.startsWith('http')) return url;
-    return '/storage/images/igdb/' + url;
+    // En mode "IGDB direct", on ne sert plus de fichiers locaux.
+    return '';
 }
 
 function escHtml(str) {

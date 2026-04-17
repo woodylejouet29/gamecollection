@@ -132,6 +132,81 @@ const SelectionStore = (() => {
 })();
 
 // ──────────────────────────────────────────────
+//  ReleaseFilter — presets + personnalisé (année/mois/date)
+// ──────────────────────────────────────────────
+
+(function ReleaseFilter() {
+    const presetSel = document.getElementById('f-release-preset');
+    const advanced  = document.getElementById('release-advanced');
+    const group     = document.getElementById('release-filter-group');
+
+    if (!presetSel || !advanced || !group) return;
+
+    const modeRadios = Array.from(group.querySelectorAll('input[type="radio"][name="release_mode"]'));
+    const panels     = Array.from(group.querySelectorAll('[data-release-panel]'));
+
+    const advInputs = () => Array.from(advanced.querySelectorAll('input, select, textarea'));
+
+    function getMode() {
+        const checked = modeRadios.find(r => r.checked);
+        return checked ? String(checked.value) : 'year';
+    }
+
+    function setPanelVisibility(mode) {
+        panels.forEach(p => {
+            const m = String(p.getAttribute('data-release-panel') || '');
+            p.hidden = (m !== mode);
+        });
+    }
+
+    function setAdvancedEnabled(enabled) {
+        advInputs().forEach(el => {
+            // On garde les radios de mode actives quand enabled=true, sinon on les désactive.
+            el.disabled = !enabled;
+        });
+        // Ne jamais désactiver le select "preset"
+        presetSel.disabled = false;
+    }
+
+    function clearAdvancedValues() {
+        advInputs().forEach(el => {
+            if (el.type === 'radio') return;
+            el.value = '';
+        });
+        // Revenir sur "année" par défaut
+        modeRadios.forEach(r => { r.checked = (String(r.value) === 'year'); });
+        setPanelVisibility('year');
+    }
+
+    function applyPresetUi() {
+        const isCustom = presetSel.value === 'custom';
+        advanced.hidden = !isCustom;
+        setAdvancedEnabled(isCustom);
+        if (isCustom) {
+            setPanelVisibility(getMode());
+        }
+    }
+
+    presetSel.addEventListener('change', () => {
+        const isCustom = presetSel.value === 'custom';
+        if (!isCustom) {
+            clearAdvancedValues();
+        }
+        applyPresetUi();
+    });
+
+    modeRadios.forEach(r => {
+        r.addEventListener('change', () => {
+            if (presetSel.value !== 'custom') return;
+            setPanelVisibility(getMode());
+        });
+    });
+
+    // Init
+    applyPresetUi();
+})();
+
+// ──────────────────────────────────────────────
 //  GameModal — popup fiche jeu
 // ──────────────────────────────────────────────
 
@@ -247,7 +322,7 @@ const SelectionStore = (() => {
         // Texte
         if (titleEl)    titleEl.textContent = game.title ?? '';
         if (metaEl)     metaEl.textContent  = buildMeta(game);
-        if (synopsisEl) synopsisEl.textContent = game.synopsis ?? '';
+        if (synopsisEl) synopsisEl.textContent = '';
 
         // Plateformes
         if (platformSel && gameIdInput) {
@@ -419,6 +494,24 @@ const LazyImages = (() => {
         const genreInput    = document.getElementById('f-genre');
         if (platformInput) platformInput.value = '';
         if (genreInput) genreInput.value = '';
+
+        // Reset filtre "Date de sortie"
+        const presetSel = document.getElementById('f-release-preset');
+        const adv = document.getElementById('release-advanced');
+        const includeUnknown = document.querySelector('#release-filter-group input[name="release_include_unknown"]');
+        if (presetSel) presetSel.value = '';
+        if (includeUnknown) includeUnknown.checked = false;
+        if (adv) {
+            adv.hidden = true;
+            adv.querySelectorAll('input, select, textarea').forEach(el => {
+                if (el.type === 'radio') {
+                    el.checked = (String(el.value) === 'year');
+                } else {
+                    el.value = '';
+                }
+                el.disabled = true;
+            });
+        }
 
         const platformSug = document.getElementById('platform-suggestions');
         const genreSug    = document.getElementById('genre-suggestions');
@@ -823,6 +916,13 @@ const LazyImages = (() => {
         const q = document.getElementById('search-main-input')?.value.trim() || '';
         if (q) params.set('q', q);
 
+        // Si un filtre "date de sortie" est actif, on force un tri chronologique ascendant.
+        // (important pour "Ce mois-ci", "Cette année", et pour le mode personnalisé)
+        const releasePreset = document.getElementById('f-release-preset')?.value ?? '';
+        if (String(releasePreset).trim() !== '') {
+            params.set('sort', 'release_asc');
+        }
+
         // Tous les autres filtres depuis le formulaire sidebar
         // (FormData inclut aussi les éléments associés via form="filters-form")
         new FormData(filtersForm).forEach((v, k) => {
@@ -862,6 +962,14 @@ const LazyImages = (() => {
             hasAny(['platform', 'platform[]']) ? 1 : 0,
             hasAny(['genre', 'genre[]']) ? 1 : 0,
             hasAny(['rating_min']) ? 1 : 0,
+            hasAny([
+                'release_preset',
+                'release_mode',
+                'release_year_from', 'release_year_to',
+                'release_month_from', 'release_month_to',
+                'release_date_from', 'release_date_to',
+                'release_include_unknown',
+            ]) ? 1 : 0,
         ].reduce((a, b) => a + b, 0);
 
         let badge = fab.querySelector('.search-filters-fab__badge');
@@ -1045,11 +1153,12 @@ const LazyImages = (() => {
                         id,
                         label: String(g.label || id),
                         search: String(g.search || (String(g.label || '') + ' ' + id)).trim(),
+                        icon: String(g.icon || '').trim(),
                     };
                 }
                 const id = String(g || '').trim();
                 if (!id) return null;
-                return { id, label: id, search: id };
+                return { id, label: id, search: id, icon: '' };
             })
             .filter(Boolean) : [],
     });
@@ -1092,10 +1201,23 @@ const LazyImages = (() => {
                 li.className = 'search-tag-picker__suggestion';
                 li.setAttribute('role', 'option');
                 li.dataset.id = it.id;
-                li.textContent = it.label;
+                if (it.icon) {
+                    const simg = document.createElement('img');
+                    simg.className = 'search-tag-picker__suggestion-icon';
+                    simg.src = it.icon;
+                    simg.alt = '';
+                    simg.width = 16;
+                    simg.height = 16;
+                    simg.decoding = 'async';
+                    li.appendChild(simg);
+                }
+                const slabel = document.createElement('span');
+                slabel.className = 'search-tag-picker__suggestion-label';
+                slabel.textContent = it.label;
+                li.appendChild(slabel);
                 li.addEventListener('mousedown', (e) => e.preventDefault());
                 li.addEventListener('click', () => {
-                    addTag(it.id, it.label);
+                    addTag(it.id, it.label, it.icon);
                     input.value = '';
                     sug.hidden = true;
                 });
@@ -1104,14 +1226,29 @@ const LazyImages = (() => {
             sug.hidden = false;
         }
 
-        function addTag(id, label) {
+        function addTag(id, label, iconUrl) {
             const selected = selectedIds();
             if (selected.has(String(id))) return;
 
             const span = document.createElement('span');
             span.className = 'search-tag-picker__tag';
             span.dataset.id = String(id);
-            span.appendChild(document.createTextNode(label));
+            const icon = String(iconUrl || '').trim();
+            if (icon) {
+                const img = document.createElement('img');
+                img.className = 'search-tag-picker__tag-icon';
+                img.src = icon;
+                img.alt = '';
+                img.width = 14;
+                img.height = 14;
+                img.decoding = 'async';
+                img.loading = 'lazy';
+                span.appendChild(img);
+            }
+            const lab = document.createElement('span');
+            lab.className = 'search-tag-picker__tag-label';
+            lab.textContent = label;
+            span.appendChild(lab);
 
             const btn = document.createElement('button');
             btn.type = 'button';
@@ -1161,8 +1298,10 @@ const LazyImages = (() => {
 
 function coverSrc(url) {
     if (!url) return '';
+    if (url.startsWith('//')) return 'https:' + url;
     if (url.startsWith('/') || url.startsWith('http')) return url;
-    return '/storage/images/igdb/' + url;
+    // En mode "IGDB direct", on ne sert plus de fichiers locaux.
+    return '';
 }
 
 function esc(str) {

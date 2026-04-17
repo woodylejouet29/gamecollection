@@ -16,6 +16,7 @@ $stats            = $stats            ?? ['members' => 0, 'games' => 0, 'entries
  */
 function coverSrc(?string $url): string {
     if (!$url) return '';
+    if (str_starts_with($url, '//')) return 'https:' . $url;
     if (str_starts_with($url, 'http')) return $url;
     return '/' . ltrim($url, '/');
 }
@@ -208,7 +209,7 @@ function fmtDate(?string $date): string {
     <section class="home-section home-section--col">
         <div class="container">
             <div class="home-section__header">
-                <h2 class="home-section__title">Les plus listés</h2>
+                <h2 class="home-section__title">Les plus attendus</h2>
                 <?php if ($authUser): ?>
                     <a href="/wishlist" class="home-section__link">Voir tout →</a>
                 <?php else: ?>

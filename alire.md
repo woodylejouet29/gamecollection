@@ -14,7 +14,9 @@ php scripts/igdb_sync.php --platforms --games --versions --from-year=2001 --to-y
 
 php scripts/igdb_sync.php --platforms --games --versions --year=2028
 
-php scripts/igdb_sync.php --games --versions --from-year=2026 --to-year=2029 --force
+php scripts/igdb_sync.php --games  --no-images --from-year=2020 --to-year=2025 --force
+
+php scripts/igdb_sync.php --games --no-images --year=2026 --force
 
 php scripts/igdb_sync.php --versions
 

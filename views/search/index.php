@@ -14,6 +14,7 @@
  */
 
 use App\Data\GenreTranslations;
+use App\Data\GenreIcons;
 
 // ──────────────────────────────────────────────
 //  Helpers — définis ici, réutilisés par _results.php (function_exists guard)
@@ -21,8 +22,10 @@ use App\Data\GenreTranslations;
 function searchCoverSrc(?string $url): string
 {
     if (!$url) return '';
+    if (str_starts_with($url, '//')) return 'https:' . $url;
     if (str_starts_with($url, '/') || str_starts_with($url, 'http')) return $url;
-    return '/storage/images/igdb/' . $url;
+    // En mode "IGDB direct", on ne sert plus de fichiers locaux.
+    return '';
 }
 
 function searchFmtDate(?string $date): string
@@ -78,6 +81,23 @@ $q = htmlspecialchars($filters['q'] ?? '');
                     <?php endif; ?>
                 <?php endforeach; ?>
             <?php endif; ?>
+            <?php foreach ([
+                'release_preset',
+                'release_mode',
+                'release_year_from', 'release_year_to',
+                'release_month_from', 'release_month_to',
+                'release_date_from', 'release_date_to',
+                'release_include_unknown',
+            ] as $k): ?>
+                <?php if (!isset($_GET[$k])) continue; ?>
+                <?php
+                    $v = $_GET[$k];
+                    if (is_array($v)) continue;
+                    $v = trim((string) $v);
+                    if ($v === '' || $v === '0') continue;
+                ?>
+                <input type="hidden" name="<?= htmlspecialchars($k) ?>" value="<?= htmlspecialchars($v) ?>">
+            <?php endforeach; ?>
             <?php foreach (['rating_min', 'sort'] as $k): ?>
                 <?php if ($k === 'sort' && (($filters['sort'] ?? '') === 'all')): ?>
                     <?php continue; ?>
@@ -165,6 +185,99 @@ $q = htmlspecialchars($filters['q'] ?? '');
                 </div>
             </div>
 
+            <?php
+                $releasePreset = trim((string) ($_GET['release_preset'] ?? ''));
+                $releaseMode   = trim((string) ($_GET['release_mode'] ?? 'year'));
+                if (!in_array($releaseMode, ['year', 'month', 'date'], true)) $releaseMode = 'year';
+                $includeUnknown = !empty($_GET['release_include_unknown']) && (string) $_GET['release_include_unknown'] !== '0';
+
+                $yearFrom  = trim((string) ($_GET['release_year_from'] ?? ''));
+                $yearTo    = trim((string) ($_GET['release_year_to'] ?? ''));
+                $monthFrom = trim((string) ($_GET['release_month_from'] ?? ''));
+                $monthTo   = trim((string) ($_GET['release_month_to'] ?? ''));
+                $dateFrom  = trim((string) ($_GET['release_date_from'] ?? ''));
+                $dateTo    = trim((string) ($_GET['release_date_to'] ?? ''));
+            ?>
+            <div class="search-sidebar__group" id="release-filter-group">
+                <label class="search-sidebar__label" for="f-release-preset">Date de sortie</label>
+
+                <div class="search-release">
+                    <select class="search-sidebar__select" id="f-release-preset" name="release_preset">
+                        <option value="" <?= $releasePreset === '' ? 'selected' : '' ?>>Toutes les dates</option>
+                        <option value="this_month" <?= $releasePreset === 'this_month' ? 'selected' : '' ?>>Ce mois-ci</option>
+                        <option value="last_3_months" <?= $releasePreset === 'last_3_months' ? 'selected' : '' ?>>3 derniers mois</option>
+                        <option value="this_year" <?= $releasePreset === 'this_year' ? 'selected' : '' ?>>Cette année</option>
+                        <option value="last_year" <?= $releasePreset === 'last_year' ? 'selected' : '' ?>>L’an dernier</option>
+                        <option value="custom" <?= $releasePreset === 'custom' ? 'selected' : '' ?>>Personnalisé…</option>
+                    </select>
+
+                    <div class="search-release__advanced" id="release-advanced" <?= $releasePreset === 'custom' ? '' : 'hidden' ?>>
+                        <div class="search-release__modes" role="radiogroup" aria-label="Précision de la date">
+                            <label class="search-release__mode">
+                                <input type="radio" name="release_mode" value="year" <?= $releaseMode === 'year' ? 'checked' : '' ?>>
+                                <span>Année</span>
+                            </label>
+                            <label class="search-release__mode">
+                                <input type="radio" name="release_mode" value="month" <?= $releaseMode === 'month' ? 'checked' : '' ?>>
+                                <span>Mois</span>
+                            </label>
+                            <label class="search-release__mode">
+                                <input type="radio" name="release_mode" value="date" <?= $releaseMode === 'date' ? 'checked' : '' ?>>
+                                <span>Date</span>
+                            </label>
+                        </div>
+
+                        <div class="search-release__panel" data-release-panel="year" <?= $releaseMode === 'year' ? '' : 'hidden' ?>>
+                            <div class="search-release__row">
+                                <div class="search-release__field">
+                                    <span class="search-release__field-label">De</span>
+                                    <input class="search-sidebar__input" type="number" inputmode="numeric"
+                                           name="release_year_from" min="1950" max="<?= (int) date('Y') + 3 ?>"
+                                           placeholder="ex: 2018" value="<?= htmlspecialchars($yearFrom) ?>">
+                                </div>
+                                <div class="search-release__field">
+                                    <span class="search-release__field-label">À</span>
+                                    <input class="search-sidebar__input" type="number" inputmode="numeric"
+                                           name="release_year_to" min="1950" max="<?= (int) date('Y') + 3 ?>"
+                                           placeholder="ex: 2024" value="<?= htmlspecialchars($yearTo) ?>">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="search-release__panel" data-release-panel="month" <?= $releaseMode === 'month' ? '' : 'hidden' ?>>
+                            <div class="search-release__row">
+                                <div class="search-release__field">
+                                    <span class="search-release__field-label">De</span>
+                                    <input class="search-sidebar__input" type="month" name="release_month_from" value="<?= htmlspecialchars($monthFrom) ?>">
+                                </div>
+                                <div class="search-release__field">
+                                    <span class="search-release__field-label">À</span>
+                                    <input class="search-sidebar__input" type="month" name="release_month_to" value="<?= htmlspecialchars($monthTo) ?>">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="search-release__panel" data-release-panel="date" <?= $releaseMode === 'date' ? '' : 'hidden' ?>>
+                            <div class="search-release__row">
+                                <div class="search-release__field">
+                                    <span class="search-release__field-label">De</span>
+                                    <input class="search-sidebar__input" type="date" name="release_date_from" value="<?= htmlspecialchars($dateFrom) ?>">
+                                </div>
+                                <div class="search-release__field">
+                                    <span class="search-release__field-label">À</span>
+                                    <input class="search-sidebar__input" type="date" name="release_date_to" value="<?= htmlspecialchars($dateTo) ?>">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <label class="search-release__checkbox">
+                        <input type="checkbox" name="release_include_unknown" value="1" <?= $includeUnknown ? 'checked' : '' ?>>
+                        <span>Inclure dates inconnues</span>
+                    </label>
+                </div>
+            </div>
+
             <div class="search-sidebar__group" id="genre-filter-group" data-conditional-genre>
                 <label class="search-sidebar__label" for="f-genre">Genre</label>
                 <div class="search-sidebar__hint" id="genre-filter-hint" hidden>
@@ -184,9 +297,14 @@ $q = htmlspecialchars($filters['q'] ?? '');
                             }
                             $selectedGenres = array_values(array_unique($selectedGenres));
                         ?>
-                        <?php foreach ($selectedGenres as $g): ?>
+                        <?php foreach ($selectedGenres as $g):
+                            $gIcon = GenreIcons::url($g);
+                        ?>
                             <span class="search-tag-picker__tag" data-id="<?= htmlspecialchars($g) ?>">
-                                <?= htmlspecialchars(GenreTranslations::translate($g)) ?>
+                                <?php if ($gIcon): ?>
+                                    <img class="search-tag-picker__tag-icon" src="<?= htmlspecialchars($gIcon) ?>" alt="" width="14" height="14" decoding="async" loading="lazy">
+                                <?php endif; ?>
+                                <span class="search-tag-picker__tag-label"><?= htmlspecialchars(GenreTranslations::translate($g)) ?></span>
                                 <button type="button" class="search-tag-picker__remove" aria-label="Retirer ce genre" data-remove-tag>&times;</button>
                                 <input type="hidden" name="genre[]" value="<?= htmlspecialchars($g) ?>">
                             </span>
@@ -242,6 +360,7 @@ $q = htmlspecialchars($filters['q'] ?? '');
                     'id' => $id,
                     'label' => GenreTranslations::translate($id),
                     'search' => $id . ' ' . GenreTranslations::translate($id),
+                    'icon' => GenreIcons::url($id) ?? '',
                 ];
             }, $filterOptions['genres'] ?? [])),
         ];
@@ -294,6 +413,22 @@ $q = htmlspecialchars($filters['q'] ?? '');
 
         $ratingMin = (int)($_GET['rating_min'] ?? 0);
         if ($ratingMin > 0) $fabCount += 1;
+
+        // Date de sortie
+        $hasRelease = false;
+        foreach ([
+            'release_preset',
+            'release_year_from', 'release_year_to',
+            'release_month_from', 'release_month_to',
+            'release_date_from', 'release_date_to',
+            'release_include_unknown',
+        ] as $k) {
+            $v = $_GET[$k] ?? '';
+            if (is_array($v)) continue;
+            $v = trim((string) $v);
+            if ($v !== '' && $v !== '0') { $hasRelease = true; break; }
+        }
+        if ($hasRelease) $fabCount += 1;
     ?>
     <?php if ($fabCount > 0): ?>
         <span class="search-filters-fab__badge"><?= (int) $fabCount ?></span>
@@ -325,7 +460,7 @@ $q = htmlspecialchars($filters['q'] ?? '');
             <div class="game-modal__info">
                 <h2 class="game-modal__title" id="modal-title"></h2>
                 <p class="game-modal__meta" id="modal-meta"></p>
-                <p class="game-modal__synopsis" id="modal-synopsis"></p>
+                <p class="game-modal__synopsis" id="modal-synopsis" hidden></p>
 
                 <form class="add-form" id="add-form" novalidate>
                     <input type="hidden" id="add-game-id" name="game_id" value="">

@@ -14,6 +14,39 @@
     const cfg = window.GAME_CONFIG || {};
 
     // ─────────────────────────────────────────────────────────────
+    //  ScrollRows — navigation prev/next (Jeux similaires)
+    // ─────────────────────────────────────────────────────────────
+
+    (function setupScrollRows() {
+        document.querySelectorAll('.games-scroll-wrapper[data-scroll-row]').forEach(wrapper => {
+            const scroll = wrapper.querySelector('.games-scroll');
+            const prev   = wrapper.querySelector('.games-scroll-nav--prev');
+            const next   = wrapper.querySelector('.games-scroll-nav--next');
+
+            if (!scroll) return;
+
+            const STEP = 520;
+
+            function updateNav() {
+                if (!prev || !next) return;
+                prev.classList.toggle('is-hidden', scroll.scrollLeft <= 4);
+                next.classList.toggle('is-hidden',
+                    scroll.scrollLeft + scroll.clientWidth >= scroll.scrollWidth - 4);
+            }
+
+            prev?.addEventListener('click', () => {
+                scroll.scrollBy({ left: -STEP, behavior: 'smooth' });
+            });
+            next?.addEventListener('click', () => {
+                scroll.scrollBy({ left: STEP, behavior: 'smooth' });
+            });
+
+            scroll.addEventListener('scroll', updateNav, { passive: true });
+            updateNav();
+        });
+    })();
+
+    // ─────────────────────────────────────────────────────────────
     //  Onglets mobile (fiche jeu)
     // ─────────────────────────────────────────────────────────────
 

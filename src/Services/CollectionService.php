@@ -198,6 +198,36 @@ class CollectionService
         );
     }
 
+    /**
+     * Retourne les IDs de jeux déjà présents dans la collection de l'utilisateur (batch).
+     *
+     * @param list<int> $gameIds
+     * @return list<int>
+     */
+    public function gameIdsInCollection(string $userId, array $gameIds): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $gameIds), static fn($x) => $x > 0)));
+        if (empty($ids)) return [];
+
+        // Supabase PostgREST : in.(1,2,3)
+        $in = implode(',', $ids);
+        $url = $this->supabaseUrl . '/rest/v1/collection_entries'
+            . '?user_id=eq.' . rawurlencode($userId)
+            . '&game_id=in.(' . $in . ')'
+            . '&select=game_id';
+
+        $res  = $this->http->get($url, ['headers' => $this->headers()]);
+        $rows = json_decode((string) $res->getBody(), true);
+        if (!is_array($rows)) return [];
+
+        $out = [];
+        foreach ($rows as $row) {
+            $gid = (int) ($row['game_id'] ?? 0);
+            if ($gid > 0) $out[] = $gid;
+        }
+        return array_values(array_unique($out));
+    }
+
     // ──────────────────────────────────────────────────────────────────
     //  Interne
     // ──────────────────────────────────────────────────────────────────

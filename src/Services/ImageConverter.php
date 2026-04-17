@@ -12,8 +12,10 @@ use Throwable;
 /**
  * Téléchargement d'images IGDB, conversion WebP, stockage Supabase ou local.
  *
- * `IGDB_IMAGES_TARGET` : `supabase` (recommandé, bucket `SUPABASE_STORAGE_BUCKET_IGDB`)
- *                      ou `local` (dossier `IGDB_IMAGES_PATH`).
+ * `IGDB_IMAGES_TARGET` :
+ *   - `igdb`     : ne stocke rien, renvoie uniquement l'URL IGDB (HTTPS) telle quelle
+ *   - `supabase` : upload WebP vers Supabase Storage (bucket `SUPABASE_STORAGE_BUCKET_IGDB`)
+ *   - `local`    : enregistre en WebP dans `IGDB_IMAGES_PATH`
  *
  * En mode supabase, si l'upload échoue pour une image, l'URL IGDB originale
  * est retournée en secours pour ne pas laisser la jaquette vide.
@@ -41,6 +43,11 @@ class ImageConverter
         $this->concurrency  = (int)($_ENV['IGDB_DOWNLOAD_CONCURRENT']  ?? 20);
         $this->target       = strtolower(trim($_ENV['IGDB_IMAGES_TARGET'] ?? 'supabase'));
 
+        if ($this->target === 'igdb') {
+            Logger::info('ImageConverter: mode IGDB direct actif (aucun stockage local/Supabase)');
+            return;
+        }
+
         if ($this->target === 'supabase') {
             $this->objectStorage = new SupabaseObjectStorage();
             if (!$this->objectStorage->isConfigured()) {
@@ -63,9 +70,23 @@ class ImageConverter
         }
     }
 
+    private function useIgdbDirect(): bool
+    {
+        return $this->target === 'igdb';
+    }
+
     private function useSupabase(): bool
     {
         return $this->target === 'supabase' && $this->objectStorage !== null;
+    }
+
+    private function normalizeUrl(string $url): string
+    {
+        $u = trim($url);
+        if ($u === '') {
+            return '';
+        }
+        return str_starts_with($u, '//') ? ('https:' . $u) : $u;
     }
 
     /**
@@ -76,6 +97,11 @@ class ImageConverter
      */
     public function convertFromUrl(string $url, string $relativePath, string $fallbackUrl = ''): ?string
     {
+        if ($this->useIgdbDirect()) {
+            $normalized = $this->normalizeUrl($url);
+            return $normalized !== '' ? $normalized : ($fallbackUrl !== '' ? $fallbackUrl : null);
+        }
+
         $results = $this->convertBatch([$relativePath => $url]);
         $result  = $results[$relativePath] ?? null;
 
@@ -98,6 +124,18 @@ class ImageConverter
         $results     = [];
         $toDownload  = [];
         $originalUrls = [];  // conserve les URLs sources pour le fallback
+
+        if ($this->useIgdbDirect()) {
+            foreach ($items as $relativePath => $url) {
+                if (!$url) {
+                    $results[$relativePath] = null;
+                    continue;
+                }
+                $normalized = $this->normalizeUrl($url);
+                $results[$relativePath] = $normalized !== '' ? $normalized : null;
+            }
+            return $results;
+        }
 
         foreach ($items as $relativePath => $url) {
             if (!$url) {
@@ -209,6 +247,9 @@ class ImageConverter
      */
     public function delete(string $relativePath): void
     {
+        if ($this->useIgdbDirect()) {
+            return;
+        }
         if ($this->useSupabase()) {
             $this->objectStorage->delete($relativePath);
             return;

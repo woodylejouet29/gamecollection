@@ -22,7 +22,19 @@ use Throwable;
 class SearchService
 {
     private const RESULTS_CACHE_VERSION = 6;
-    private const FILTER_PLATFORMS_CACHE_KEY = 'filter_platforms_v2';
+    // bump pour invalider le cache plateformes après filtrage
+    private const FILTER_PLATFORMS_CACHE_KEY = 'filter_platforms_v5';
+    /** Plateformes à exclure (IDs locaux, colonne `platforms.id`). */
+    private const EXCLUDED_PLATFORM_IDS = [28, 32, 61, 62, 68, 183];
+    /** Filet de sécurité si `igdb_id` est absent/null dans une réponse. */
+    private const EXCLUDED_PLATFORM_NAMES = [
+        'android',
+        'ios',
+        'blackberry os',
+        'windows phone',
+        'web browser',
+        'windows mobile',
+    ];
 
     private Client $http;
     private string $supabaseUrl;
@@ -249,6 +261,7 @@ class SearchService
                 if ($payload['r'] === null) return null;
                 break;
             case 'upcoming':
+            case 'release_asc':
             case 'oldest':
             case 'recent':
             default:
@@ -289,7 +302,7 @@ class SearchService
         // donc on encode une disjonction OR en `or=(...)`.
         return match ($sort) {
             'all' => '&id=lt.' . $id,
-            'upcoming', 'oldest' => (
+            'upcoming', 'oldest', 'release_asc' => (
                 isset($data['d']) && is_string($data['d']) && $data['d'] !== ''
                     ? '&release_date=not.is.null'
                       . '&or=('
@@ -372,6 +385,71 @@ class SearchService
     }
 
     /**
+     * Construit le filtre release_date à partir de bornes normalisées (YYYY-MM-DD).
+     *
+     * @return array{qs:string, orExpr:?string}
+     *   - qs: filtres AND simples (&release_date=gte...&release_date=lte...)
+     *   - orExpr: expression interne pour or(...) quand "inclure inconnues" est activé
+     */
+    private function buildReleaseDateFilter(array $filters): array
+    {
+        $from = trim((string) ($filters['release_from'] ?? ''));
+        $to   = trim((string) ($filters['release_to'] ?? ''));
+        $includeUnknown = !empty($filters['release_include_unknown']);
+
+        $hasFrom = $from !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $from);
+        $hasTo   = $to   !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $to);
+        if (!$hasFrom && !$hasTo) {
+            return ['qs' => '', 'orExpr' => null];
+        }
+
+        if ($includeUnknown) {
+            $parts = [];
+            if ($hasFrom) $parts[] = 'release_date.gte.' . rawurlencode($from);
+            if ($hasTo)   $parts[] = 'release_date.lte.' . rawurlencode($to);
+
+            $rangeExpr = '';
+            if (count($parts) === 2) {
+                $rangeExpr = 'and(' . implode(',', $parts) . ')';
+            } elseif (count($parts) === 1) {
+                $rangeExpr = $parts[0];
+            }
+            if ($rangeExpr === '') {
+                return ['qs' => '', 'orExpr' => null];
+            }
+            return [
+                'qs' => '',
+                'orExpr' => 'release_date.is.null,' . $rangeExpr,
+            ];
+        }
+
+        $qs = '';
+        if ($hasFrom) $qs .= '&release_date=gte.' . rawurlencode($from);
+        if ($hasTo)   $qs .= '&release_date=lte.' . rawurlencode($to);
+        return ['qs' => $qs, 'orExpr' => null];
+    }
+
+    /**
+     * Split une chaîne qui contient potentiellement "&or=(...)" en [prefix, orExpr].
+     *
+     * @return array{0:string,1:?string}
+     */
+    private function splitOrFilter(string $filter): array
+    {
+        $p = strpos($filter, '&or=(');
+        if ($p === false) {
+            return [$filter, null];
+        }
+        $prefix = substr($filter, 0, $p);
+        $expr = substr($filter, $p + 5); // retire "&or=("
+        if (str_ends_with($expr, ')')) {
+            $expr = substr($expr, 0, -1);
+        }
+        $expr = trim($expr);
+        return [$prefix, $expr !== '' ? $expr : null];
+    }
+
+    /**
      * Masquer les DLC/Extensions dans la recherche.
      *
      * On ne stocke plus le payload IGDB complet (`raw_igdb_data`) en base, pour éviter l'explosion TOAST.
@@ -404,11 +482,31 @@ class SearchService
 
         $offset = max(0, ($page - 1) * $perPage);
         $rangeEnd = $offset + max(0, $perPage - 1);
-        $qs     = $this->buildFilters($filters)
-                . $this->buildGenresFilterQs($filters['genres'] ?? [])
-                . $this->buildNonDlcFilters()
-                . '&order=' . $this->resolveOrder($filters['sort'] ?? '')
-                . "&limit={$perPage}&offset={$offset}";
+        $genres = $filters['genres'] ?? [];
+        $genres = is_array($genres) ? $genres : [];
+        $genresOr = $this->buildGenresOrExpr($genres);
+        $genresQs = $genresOr === null ? $this->buildGenresFilterQs($genres) : '';
+
+        $release = $this->buildReleaseDateFilter($filters);
+        $releaseQs = $release['orExpr'] === null ? ($release['qs'] ?? '') : '';
+
+        $orExprs = [];
+        if ($genresOr !== null) $orExprs[] = $genresOr;
+        if (!empty($release['orExpr'])) $orExprs[] = (string) $release['orExpr'];
+
+        $qs = $this->buildFilters($filters)
+            . $genresQs
+            . $releaseQs
+            . $this->buildNonDlcFilters();
+
+        if (count($orExprs) === 1) {
+            $qs .= '&or=(' . $orExprs[0] . ')';
+        } elseif (count($orExprs) >= 2) {
+            $qs .= '&and=(' . implode(',', array_map(static fn($e) => 'or(' . $e . ')', $orExprs)) . ')';
+        }
+
+        $qs .= '&order=' . $this->resolveOrder($filters['sort'] ?? '')
+            . "&limit={$perPage}&offset={$offset}";
 
         $url = $this->supabaseUrl . '/rest/v1/games?select=' . $select . $qs;
 
@@ -465,41 +563,34 @@ class SearchService
 
         $cursorFilter = $this->buildCursorFilter($sort, $cursor);
         $genres = $filters['genres'] ?? [];
-        $genresOr = $this->buildGenresOrExpr(is_array($genres) ? $genres : []);
-        $genresQs = $this->buildGenresFilterQs(is_array($genres) ? $genres : []);
+        $genres = is_array($genres) ? $genres : [];
+        $genresOr = $this->buildGenresOrExpr($genres);
+        $genresQs = $genresOr === null ? $this->buildGenresFilterQs($genres) : '';
 
-        // Si on a un cursor (donc déjà un `or=(...)`) ET plusieurs genres (donc besoin d'un autre OR),
-        // on doit combiner via `and=(or(...cursor...),or(...genres...))`.
-        if ($genresOr !== null && $cursorFilter !== '' && str_contains($cursorFilter, '&or=(')) {
-            // Extraire le contenu de or=(...) du cursorFilter (format connu).
-            $cursorExpr = '';
-            $p = strpos($cursorFilter, '&or=(');
-            if ($p !== false) {
-                $cursorExpr = substr($cursorFilter, $p + 5); // retire "&or=("
-                if (str_ends_with($cursorExpr, ')')) {
-                    $cursorExpr = substr($cursorExpr, 0, -1);
-                }
-            }
-            // Garder les pré-filtres (&release_date=not.is.null ou &igdb_rating=not.is.null), retirer le &or=(...) du cursorFilter.
-            $cursorPrefix = $p !== false ? substr($cursorFilter, 0, $p) : $cursorFilter;
+        $release = $this->buildReleaseDateFilter($filters);
+        $releaseQs = $release['orExpr'] === null ? ($release['qs'] ?? '') : '';
 
-            $qs = $this->buildFilters($filters)
-                . $this->buildNonDlcFilters()
-                . $cursorPrefix
-                . '&and=('
-                . 'or(' . $cursorExpr . ')'
-                . ',or(' . $genresOr . ')'
-                . ')'
-                . '&order=' . $order
-                . "&limit={$perPage}";
-        } else {
-            $qs = $this->buildFilters($filters)
-                . $genresQs
-                . $this->buildNonDlcFilters()
-                . $cursorFilter
-                . '&order=' . $order
-                . "&limit={$perPage}";
+        [$cursorPrefix, $cursorOr] = $this->splitOrFilter($cursorFilter);
+
+        $orExprs = [];
+        if (!empty($cursorOr)) $orExprs[] = (string) $cursorOr;
+        if ($genresOr !== null) $orExprs[] = $genresOr;
+        if (!empty($release['orExpr'])) $orExprs[] = (string) $release['orExpr'];
+
+        $qs = $this->buildFilters($filters)
+            . $genresQs
+            . $releaseQs
+            . $this->buildNonDlcFilters()
+            . $cursorPrefix;
+
+        if (count($orExprs) === 1) {
+            $qs .= '&or=(' . $orExprs[0] . ')';
+        } elseif (count($orExprs) >= 2) {
+            $qs .= '&and=(' . implode(',', array_map(static fn($e) => 'or(' . $e . ')', $orExprs)) . ')';
         }
+
+        $qs .= '&order=' . $order
+            . "&limit={$perPage}";
 
         // Range 0..perPage-1 : suffit pour Content-Range + total estimé, sans OFFSET.
         $rangeEnd = max(0, $perPage - 1);
@@ -667,7 +758,7 @@ class SearchService
         // Informations principales
         $games = $this->get(
             "/rest/v1/games?select=id,title,slug,cover_url,igdb_rating,release_date,"
-            . "synopsis,synopsis_zstd,developer,publisher,genres&id=eq.{$id}&limit=1"
+            . "developer,publisher,genres&id=eq.{$id}&limit=1"
         );
 
         if (empty($games)) {
@@ -675,7 +766,6 @@ class SearchService
         }
 
         $game = $games[0];
-        ZstdSynopsis::hydrateGameRow($game);
 
         // Plateformes disponibles (avec nom)
         $game['platforms'] = $this->get(
@@ -733,7 +823,7 @@ class SearchService
         }
         if ($cachedPlatforms === null) {
             $promises['platforms'] = $this->http->getAsync(
-                $this->supabaseUrl . '/rest/v1/platforms?select=id,name,abbreviation,generation'
+                $this->supabaseUrl . '/rest/v1/platforms?select=id,igdb_id,name,abbreviation,generation'
                 // Inclut aussi les plateformes sans génération (ex: PC) et trie consoles d'abord.
                 . '&order=generation.desc.nullslast,name.asc&limit=500',
                 ['headers' => $this->headers()]
@@ -758,7 +848,7 @@ class SearchService
         if ($cachedPlatforms === null) {
             $body = $resolved['platforms'] ?? null;
             $data = $body ? json_decode((string) $body->getBody(), true) : [];
-            $cachedPlatforms = is_array($data) ? $data : [];
+            $cachedPlatforms = is_array($data) ? $this->filterExcludedPlatforms($data) : [];
             if (!empty($cachedPlatforms)) {
                 $this->writeCache($platformKey, $cachedPlatforms);
             }
@@ -792,9 +882,10 @@ class SearchService
     {
         $catalog = $this->cached('register_platforms_catalog', function (): array {
             $raw = $this->get(
-                '/rest/v1/platforms?select=id,name,abbreviation,generation'
+                '/rest/v1/platforms?select=id,igdb_id,name,abbreviation,generation'
                 . '&order=name.asc&limit=500'
             );
+            $raw = $this->filterExcludedPlatforms(is_array($raw) ? $raw : []);
             $out = [];
             foreach ($raw as $row) {
                 if (!isset($row['id'], $row['name'])) {
@@ -827,10 +918,32 @@ class SearchService
 
     private function fetchPlatformOptions(): array
     {
-        return $this->get(
-            '/rest/v1/platforms?select=id,name,abbreviation,generation'
+        $rows = $this->get(
+            '/rest/v1/platforms?select=id,igdb_id,name,abbreviation,generation'
             . '&order=generation.desc.nullslast,name.asc&limit=500'
         );
+        return $this->filterExcludedPlatforms(is_array($rows) ? $rows : []);
+    }
+
+    /** @param list<array> $rows */
+    private function filterExcludedPlatforms(array $rows): array
+    {
+        $out = [];
+        foreach ($rows as $row) {
+            if (!is_array($row)) continue;
+            $id = isset($row['id']) && is_numeric($row['id']) ? (int) $row['id'] : 0;
+            if ($id > 0 && in_array($id, self::EXCLUDED_PLATFORM_IDS, true)) {
+                continue;
+            }
+
+            // Filet de sécurité : au cas où des IDs changent dans une autre DB
+            $name = isset($row['name']) ? mb_strtolower(trim((string) $row['name'])) : '';
+            if ($name !== '' && in_array($name, self::EXCLUDED_PLATFORM_NAMES, true)) {
+                continue;
+            }
+            $out[] = $row;
+        }
+        return $out;
     }
 
     /**
@@ -900,6 +1013,7 @@ class SearchService
             'all', ''    => 'id.desc',
             'recent'     => 'release_date.desc.nullslast,id.desc',
             'upcoming'   => 'release_date.asc.nullslast,id.asc',
+            'release_asc'=> 'release_date.asc.nullslast,id.asc',
             'rating'     => 'igdb_rating.desc.nullslast,id.desc',
             default      => 'release_date.desc.nullslast,id.desc',
         };

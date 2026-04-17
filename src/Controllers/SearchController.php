@@ -178,6 +178,7 @@ class SearchController
             // Important: `search.js` dépend de fonctions globales définies dans `app.js` (cookies + view toggle).
             // On l'injecte donc après `app.js` via le slot `$foot` du layout.
             'foot'          => '<script>window.SEARCH_CONFIG={gameUrl:"/api/games/",suggestUrl:"/api/games/search"};</script>'
+                            . '<script src="' . View::asset('js/collection-release.js') . '" defer></script>'
                             . '<script src="' . View::asset('js/search.js') . '" defer></script>',
         ]);
     }

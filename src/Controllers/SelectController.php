@@ -26,6 +26,7 @@ class SelectController
                 'collectionUrl' => '/collection',
                 'searchUrl'     => '/search',
             ], JSON_UNESCAPED_SLASHES) . ';</script>'
+                      . '<script src="' . View::asset('js/collection-release.js') . '" defer></script>'
                       . '<script src="' . View::asset('js/select.js') . '" defer></script>',
         ]);
     }

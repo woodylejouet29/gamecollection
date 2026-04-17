@@ -667,7 +667,7 @@ class SearchService
         // Informations principales
         $games = $this->get(
             "/rest/v1/games?select=id,title,slug,cover_url,igdb_rating,release_date,"
-            . "synopsis,developer,publisher,genres&id=eq.{$id}&limit=1"
+            . "synopsis,synopsis_zstd,developer,publisher,genres&id=eq.{$id}&limit=1"
         );
 
         if (empty($games)) {
@@ -675,6 +675,7 @@ class SearchService
         }
 
         $game = $games[0];
+        ZstdSynopsis::hydrateGameRow($game);
 
         // Plateformes disponibles (avec nom)
         $game['platforms'] = $this->get(

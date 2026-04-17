@@ -298,7 +298,7 @@
 .game-grid--grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 1rem;
+    gap: 0.7rem;
 }
 .game-grid--grid .col-card__extra   { display: none; }
 .game-grid--grid .col-card__actions { display: none; }
@@ -307,12 +307,12 @@
 .game-grid--cards {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 1rem;
+    gap: 0.7rem;
 }
 .game-grid--cards .col-card {
     display: flex;
     gap: .875rem;
-    align-items: flex-start;
+    align-items: center;
     padding: .875rem;
     border-radius: var(--radius-lg);
     background: var(--bg-2);
@@ -333,7 +333,7 @@
 .game-grid--list {
     display: flex;
     flex-direction: column;
-    gap: .5rem;
+    gap: .7rem;
 }
 .game-grid--list .col-card {
     display: flex;
@@ -756,7 +756,7 @@
 
     .game-grid--grid {
         grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-        gap: .75rem;
+        gap: .7rem;
     }
     .game-grid--cards {
         grid-template-columns: 1fr;

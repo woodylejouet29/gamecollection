@@ -291,6 +291,11 @@ class ProfileController
             View::redirect('/edit-profile');
         }
 
+        // Met à jour la session pour refléter le changement immédiatement dans l'UI
+        if (isset($_SESSION['auth']) && is_array($_SESSION['auth'])) {
+            $_SESSION['auth']['collection_public'] = $collectionPublic;
+        }
+
         Flash::success($collectionPublic
             ? 'Votre collection est maintenant publique.'
             : 'Votre collection est maintenant privée.'

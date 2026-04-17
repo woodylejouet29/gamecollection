@@ -77,6 +77,24 @@ function escHtml(str) {
     return d.innerHTML;
 }
 
+/** Désactive la carte si l'ajout collection est interdit (J-7 sortie). */
+function applyCollectionGate(card, message) {
+    if (!card || !message) return;
+    card.dataset.collectionBlocked = '1';
+    const body = card.querySelector('.sel-game__body');
+    if (body) {
+        const note = document.createElement('div');
+        note.className = 'sel-game__gate-banner';
+        note.setAttribute('role', 'alert');
+        note.textContent = message;
+        body.insertBefore(note, body.firstChild);
+    }
+    card.querySelectorAll('input, select, textarea, button').forEach(el => {
+        if (el.classList.contains('sel-game__remove')) return;
+        el.disabled = true;
+    });
+}
+
 // ──────────────────────────────────────────────
 //  Templates HTML
 // ──────────────────────────────────────────────
@@ -650,10 +668,11 @@ function updateBar() {
 
     const gameCount = list.querySelectorAll('.sel-game').length;
     const copyCount = list.querySelectorAll('.sel-copy').length;
+    const hasBlocked = list.querySelector('.sel-game[data-collection-blocked="1"]') !== null;
 
     bar.hidden = gameCount === 0;
     bar.classList.toggle('is-visible', gameCount > 0);
-    if (submit) submit.disabled = gameCount === 0;
+    if (submit) submit.disabled = gameCount === 0 || hasBlocked;
 
     if (counter) {
         const gLabel = gameCount <= 1 ? 'jeu' : 'jeux';
@@ -666,6 +685,8 @@ function updateBar() {
     if (sub) {
         if (gameCount === 0) {
             sub.textContent = 'Votre sélection est vide.';
+        } else if (hasBlocked) {
+            sub.textContent = 'Retirez les jeux non éligibles (sortie trop lointaine ou date inconnue) pour valider.';
         } else {
             const gTxt = gameCount === 1 ? '1 jeu' : `${gameCount} jeux`;
             const cTxt = copyCount === 1 ? '1 exemplaire' : `${copyCount} exemplaires`;
@@ -703,15 +724,20 @@ async function renderGameCard(item, gameIdx) {
 
     try {
         const res      = await fetch(`${CFG.gameUrl}${item.gameId}`, { headers: { Accept: 'application/json' } });
-        const gameData = res.ok ? await res.json() : null;
+        const raw      = res.ok ? await res.json() : null;
+        const payload  = raw?.data ?? raw ?? { title: item.gameTitle };
+        const gate     = typeof window.collectionReleaseGate !== 'undefined'
+            ? window.collectionReleaseGate.check(payload.release_date ?? '')
+            : { ok: true };
 
-        const cardHtml = Templates.gameCard(item, gameData || { title: item.gameTitle }, gameIdx);
+        const cardHtml = Templates.gameCard(item, payload, gameIdx);
         const tmp      = document.createElement('ul');
         tmp.innerHTML  = cardHtml;
         const card     = tmp.firstElementChild;
 
         list.replaceChild(card, placeholder);
         bindCardEvents(card);
+        if (!gate.ok) applyCollectionGate(card, gate.message);
     } catch {
         placeholder.className = 'sel-game sel-game--error';
         placeholder.innerHTML = `
@@ -1084,7 +1110,15 @@ function showPartialResult(created, errors) {
     if (!el) return;
 
     const dupErrors = errors.filter(e => e.code === 'DUPLICATE_ENTRY');
-    const otherErrors = errors.filter(e => e.code !== 'DUPLICATE_ENTRY');
+    const releaseErrors = errors.filter(e =>
+        e.code === 'COLLECTION_TOO_EARLY' || e.code === 'RELEASE_DATE_UNKNOWN' || e.code === 'RELEASE_DATE_INVALID'
+    );
+    const otherErrors = errors.filter(e =>
+        e.code !== 'DUPLICATE_ENTRY'
+        && e.code !== 'COLLECTION_TOO_EARLY'
+        && e.code !== 'RELEASE_DATE_UNKNOWN'
+        && e.code !== 'RELEASE_DATE_INVALID'
+    );
 
     let html = `<div class="sel-result-error">
         <div class="sel-result-error__icon">
@@ -1097,6 +1131,7 @@ function showPartialResult(created, errors) {
         <p class="sel-result-error__desc">
             ${created.length} exemplaire(s) ajouté(s). 
             ${dupErrors.length > 0 ? `${dupErrors.length} doublon(s) ignoré(s).` : ''}
+            ${releaseErrors.length > 0 ? `${releaseErrors.length} jeu(x) non éligible(s) (règle de sortie).` : ''}
             ${otherErrors.length > 0 ? `${otherErrors.length} autre(s) erreur(s).` : ''}
         </p>
         <div style="display:flex;gap:.75rem;flex-wrap:wrap;justify-content:center;margin-top:.5rem">

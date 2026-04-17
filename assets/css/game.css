@@ -37,6 +37,7 @@
     position: relative;
     z-index: 2;
     display: flex;
+    margin-left: 1rem;
     gap: 2.5rem;
     align-items: flex-start;
 }
@@ -180,8 +181,22 @@
     flex-shrink: 0;
 }
 
+.game-hero__collection-gate {
+    flex-basis: 100%;
+    margin: 0;
+    font-size: 0.875rem;
+    color: white;
+    line-height: 1.45;
+}
+
 .btn--collection {
     position: relative;
+}
+
+.game-hero__actions .btn--collection:disabled {
+    opacity: 0.5;
+    filter: grayscale(0.55);
+    box-shadow: none;
 }
 
 .btn--collection .badge {
@@ -203,11 +218,11 @@
     background: rgba(239,68,68,.08);
 }
 .btn--wishlist.is-active {
-    border-color: #ef4444;
-    color: #ef4444;
+    border-color: #EA970C;
+    color: #EA970C;
     background: rgba(239,68,68,.1);
 }
-.btn--wishlist.is-active .wishlist-icon { fill: #ef4444; }
+.btn--wishlist.is-active .wishlist-icon { fill: #EA970C; }
 
 .wishlist-count {
     display: inline-flex;
@@ -320,7 +335,8 @@
 
 /* ── Sections génériques ──────────────────────────────────────── */
 .game-section {
-    margin-bottom: 2.5rem;
+    margin-bottom: 1.5rem;
+    margin-top: 1.5rem;
 }
 
 .game-section__header {

@@ -91,7 +91,7 @@
 }
 
 .user-stat { text-align: center; }
-.user-stat__val { display: block; font-weight: 900; font-size: 1rem; }
+.user-stat__val { display: block; font-weight: 900; font-size: 1.3rem; }
 .user-stat__lbl { display: block; margin-top: .1rem; font-size: .78rem; color: var(--text-3); }
 .user-stat--sep  { display: none; }
 
@@ -138,12 +138,17 @@
 .user-review__date  { font-size:.78rem; color:var(--text-3); }
 
 /* ── Collection cards ────────────────────────────────────────── */
+.user-content .game-grid {
+  gap: .7rem;
+}
+
 .user-col-card {
   background: var(--bg-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: var(--shadow-glow);
+  position: relative;
 }
 .user-col-card__cover          { display:block; aspect-ratio:3/4; background:rgba(255,255,255,.02); position:relative; }
 .user-col-card__cover img      { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
@@ -158,7 +163,7 @@
 .game-grid--list .user-col-card {
   display: flex;
   align-items: center;
-  gap: .75rem;
+  gap: .7rem;
   padding: .55rem .75rem;
   border-radius: var(--radius);
 }
@@ -171,8 +176,21 @@
   overflow: hidden;
   flex-shrink: 0;
 }
-.game-grid--list .user-col-card__body { padding:0; flex:1; min-width:0; }
+.game-grid--list .user-col-card__body { padding:0; flex:1; min-width:0; position: relative; padding-right: 3rem; }
 .game-grid--list .user-col-card__meta { margin-top:.2rem; }
+
+/* En mode liste : wishlist à droite de la date */
+.game-grid--list .wish-badge--overlay { display: none; }
+.game-grid--list .wish-badge--inline {
+  display: inline-flex;
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: auto;
+  width: 30px;
+  height: 30px;
+  transform: translateY(-50%);
+}
 
 /* ── Privé / vide ────────────────────────────────────────────── */
 .user-private {
@@ -221,12 +239,12 @@
   .user-content { padding:.85rem 1rem 2.5rem; }
 
   .user-stats  { gap:.5rem; padding:.7rem; }
-  .user-stat__val { font-size:.92rem; }
+  .user-stat__val { font-size:1.5rem; }
   .user-stat__lbl { font-size:.74rem; }
 
   .user-section { margin-top:.85rem; }
   .user-section__head { margin:.45rem 0; gap:.6rem; }
-  .user-section__title { font-size:.88rem; }
+  .user-section__title { font-size:1.25rem; }
   .user-section__sub   { font-size:.76rem; }
 
   .user-reviews { gap:.5rem; }
@@ -256,21 +274,21 @@
    DESKTOP  ≥ 1024px
    ================================================================ */
 @media (min-width: 1024px) {
-  .user-hero { padding:1rem 0 .75rem; }
-  .user-hero__row { grid-template-columns:54px 1fr auto; gap:.75rem; }
-  .user-hero__avatar { width:54px; height:54px; }
+  .user-hero { padding:1.5rem 0 .75rem; }
+  .user-hero__row { grid-template-columns:54px 1fr auto; gap:4rem; }
+  .user-hero__avatar { width:96px; height:96px; }
   .user-hero__placeholder { font-size:1.25rem; }
-  .user-hero__name  { font-size:1.05rem; }
+  .user-hero__name  { font-size:1.5rem; }
   .user-hero__bio   { font-size:.8rem; }
   .user-hero__chips { margin-top:.35rem; }
 
-  .user-content { padding:.75rem 1rem 2.5rem; }
+  .user-content { padding:.75rem 1.5rem 2.5rem; }
 
   .user-stats   { padding:.6rem; gap:.4rem; }
-  .user-stat__val { font-size:.88rem; }
+  .user-stat__val { font-size:1.7rem; }
   .user-stat__lbl { font-size:.72rem; }
 
-  .user-section { margin-top:.75rem; }
+  .user-section { margin-top:1.5rem; }
   .user-section__head { margin:.4rem 0; }
 
   .user-review  { padding:.6rem; gap:.5rem; }

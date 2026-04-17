@@ -473,7 +473,7 @@ APICALYPSE;
                     'igdb_id'           => $gid,
                     'title'             => (string)($g['name'] ?? 'Inconnu'),
                     'slug'              => (string)($g['slug'] ?? "game-{$gid}"),
-                    'synopsis'          => $g['summary']   ?? null,
+                    ...$this->synopsisFieldsForUpsert($g['summary'] ?? null),
                     'storyline'         => $g['storyline'] ?? null,
                     'cover_url'         => $localCover ?? $coverUrl,
                     'igdb_rating'       => isset($g['rating'])            ? round((float) $g['rating'], 2)            : null,
@@ -1185,6 +1185,22 @@ APICALYPSE;
     // ──────────────────────────────────────────────
     //  Helpers Supabase (PostgREST)
     // ──────────────────────────────────────────────
+
+    /**
+     * Synopsis : zstd en base si {@see ZstdSynopsis::compressForSupabase} disponible, sinon TEXT classique.
+     *
+     * @return array{synopsis: ?string, synopsis_zstd: ?string}
+     */
+    private function synopsisFieldsForUpsert(mixed $summary): array
+    {
+        $plain = is_string($summary) && $summary !== '' ? $summary : null;
+        $hex   = ZstdSynopsis::compressForSupabase($plain);
+        if ($hex !== null) {
+            return ['synopsis' => null, 'synopsis_zstd' => $hex];
+        }
+
+        return ['synopsis' => $plain, 'synopsis_zstd' => null];
+    }
 
     private function upsertBatch(string $path, array $rows, string $onConflict = ''): void
     {

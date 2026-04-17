@@ -303,7 +303,10 @@
     const modalCollBackdrop = document.getElementById('modal-collection-backdrop');
     const platformList      = document.getElementById('modal-platform-list');
 
-    btnAddCollection?.addEventListener('click', () => openOverlay(modalCollection));
+    btnAddCollection?.addEventListener('click', () => {
+        if (btnAddCollection.disabled || cfg.collectionAddBlocked) return;
+        openOverlay(modalCollection);
+    });
     modalCollClose?.addEventListener('click',   () => closeOverlay(modalCollection));
     modalCollBackdrop?.addEventListener('click',() => closeOverlay(modalCollection));
 

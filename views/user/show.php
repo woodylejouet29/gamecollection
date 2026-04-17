@@ -201,6 +201,18 @@ $viewMode = $_COOKIE['view_mode'] ?? 'grid';
                                     <span class="user-col-card__ph" aria-hidden="true"></span>
                                 <?php endif; ?>
                             </a>
+                            <button class="wish-badge wish-badge--overlay"
+                                    type="button"
+                                    data-action="wishlist-toggle"
+                                    data-game-id="<?= (int)($g['id'] ?? 0) ?>"
+                                    aria-pressed="false"
+                                    aria-label="Ajouter à ma wishlist"
+                                    title="Ajouter à ma wishlist">
+                                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                    <path d="M13 3c0 3-2 4-2 6 0 1.2.8 2.2 2 2.6 0-2.2 2-3.4 2-6 2.5 2 4 4.4 4 7.4A7 7 0 1 1 5 13c0-2.3 1.1-4.3 2.6-5.8.2 1.7 1.2 3.1 2.6 4C9.4 7.6 11 6.2 13 3Z"
+                                          fill="currentColor"/>
+                                </svg>
+                            </button>
                             <div class="user-col-card__body">
                                 <strong class="user-col-card__title">
                                     <a href="/game/<?= htmlspecialchars((string) ($g['slug'] ?? '')) ?>">
@@ -210,6 +222,18 @@ $viewMode = $_COOKIE['view_mode'] ?? 'grid';
                                 <?php if (!empty($g['release_date'])): ?>
                                     <span class="user-col-card__meta"><?= htmlspecialchars(userFmtDate((string) $g['release_date'])) ?></span>
                                 <?php endif; ?>
+                                <button class="wish-badge wish-badge--inline"
+                                        type="button"
+                                        data-action="wishlist-toggle"
+                                        data-game-id="<?= (int)($g['id'] ?? 0) ?>"
+                                        aria-pressed="false"
+                                        aria-label="Ajouter à ma wishlist"
+                                        title="Ajouter à ma wishlist">
+                                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                        <path d="M13 3c0 3-2 4-2 6 0 1.2.8 2.2 2 2.6 0-2.2 2-3.4 2-6 2.5 2 4 4.4 4 7.4A7 7 0 1 1 5 13c0-2.3 1.1-4.3 2.6-5.8.2 1.7 1.2 3.1 2.6 4C9.4 7.6 11 6.2 13 3Z"
+                                              fill="currentColor"/>
+                                    </svg>
+                                </button>
                             </div>
                         </article>
                     <?php endforeach; ?>

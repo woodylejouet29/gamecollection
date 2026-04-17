@@ -94,6 +94,38 @@ ul, ol { list-style: none; }
     padding: 0 1.5rem;
 }
 
+/* ── Badge wishlist (flamme) ─────────────────────────────────── */
+.wish-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, .18);
+    background: rgba(239, 68, 68, .92);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 3;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, .35);
+    transition: transform var(--transition), filter var(--transition), background var(--transition);
+}
+.wish-badge svg { width: 18px; height: 18px; }
+.wish-badge:hover { transform: translateY(-1px); filter: brightness(1.05); }
+.wish-badge.is-active {
+    background: rgba(245, 158, 11, .95); /* jaune */
+    color: #0f0e17; /* icône noire */
+    border-color: rgba(0, 0, 0, .12);
+}
+.wish-badge.is-busy { opacity: .65; cursor: not-allowed; transform: none; }
+.wish-badge:focus-visible { outline: 0; box-shadow: 0 0 0 3px rgba(239,68,68,.25), 0 10px 26px rgba(0,0,0,.35); }
+
+/* Variantes (overlay vs inline) */
+.wish-badge--inline { display: none; }
+
 /* ── Utilitaires ──────────────────────────────────────────────── */
 .sr-only {
     position: absolute; width: 1px; height: 1px;
@@ -136,6 +168,30 @@ ul, ol { list-style: none; }
     opacity: .9;
     transform: translateY(-1px);
     box-shadow: 0 4px 20px rgba(124,58,237,.45);
+}
+
+.btn:disabled,
+.btn[disabled] {
+    opacity: 0.55;
+    cursor: not-allowed;
+    pointer-events: none;
+    transform: none;
+    filter: grayscale(0.45);
+    box-shadow: none;
+}
+
+.btn--primary:disabled,
+.btn--primary[disabled] {
+    background: color-mix(in srgb, var(--border) 85%, var(--surface));
+    color: var(--text-2);
+    border-color: var(--border);
+}
+
+.btn--ghost:disabled,
+.btn--ghost[disabled] {
+    opacity: 0.45;
+    border-color: var(--border);
+    color: var(--text-2);
 }
 
 .btn--ghost {

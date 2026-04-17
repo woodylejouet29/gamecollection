@@ -232,6 +232,111 @@
 })();
 
 // ──────────────────────────────────────────────
+//  WishlistToggle — badge flamme sur cartes
+// ──────────────────────────────────────────────
+
+(function WishlistToggle() {
+  async function postJson(url, payload) {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify(payload),
+    });
+
+    // Si la requête est redirigée (ex: vers /login), on force la navigation.
+    if (res.redirected) {
+      window.location.href = res.url;
+      return null;
+    }
+
+    let data = null;
+    try { data = await res.json(); } catch { /* noop */ }
+    return { res, data };
+  }
+
+  async function syncWishlistBadges(root) {
+    const scope = root && root.querySelectorAll ? root : document;
+    const btns = Array.from(scope.querySelectorAll('[data-action="wishlist-toggle"]'));
+    if (btns.length === 0) return;
+
+    const ids = Array.from(new Set(
+      btns.map(b => parseInt(b.getAttribute('data-game-id') || '0', 10)).filter(Boolean)
+    ));
+    if (ids.length === 0) return;
+
+    try {
+      const out = await postJson('/api/wishlist/check', { game_ids: ids });
+      if (!out) return;
+      const { res, data } = out;
+      if (!res.ok || !data || data.success !== true) return;
+
+      const wishlisted = new Set((data.data && data.data.game_ids) ? data.data.game_ids.map(Number) : []);
+      btns.forEach(btn => {
+        const gid = parseInt(btn.getAttribute('data-game-id') || '0', 10) || 0;
+        if (!gid) return;
+        const active = wishlisted.has(gid);
+        btn.classList.toggle('is-active', active);
+        btn.setAttribute('aria-pressed', String(active));
+        const title = active ? 'Retirer de ma wishlist' : 'Ajouter à ma wishlist';
+        btn.setAttribute('title', title);
+        btn.setAttribute('aria-label', title);
+      });
+    } catch {
+      // silent: si l'utilisateur n'est pas connecté ou en cas d'erreur réseau, on ne bloque pas l'UI
+    }
+  }
+
+  // Sync initial + après rechargements AJAX (search)
+  document.addEventListener('DOMContentLoaded', () => { syncWishlistBadges(document); });
+  window.addEventListener('wishlist:sync', (e) => { syncWishlistBadges(e?.detail?.root); });
+
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-action="wishlist-toggle"]');
+    if (!btn) return;
+
+    const rawId = btn.getAttribute('data-game-id') || btn.closest('[data-game-id]')?.getAttribute('data-game-id') || '0';
+    const gameId = parseInt(rawId, 10) || 0;
+    if (!gameId) return;
+
+    if (btn.disabled) return;
+    btn.disabled = true;
+    btn.classList.add('is-busy');
+
+    try {
+      const out = await postJson('/api/wishlist/toggle', { game_id: gameId });
+      if (!out) return;
+
+      const { res, data } = out;
+      if (!res.ok || !data || data.success !== true) {
+        // Non authentifié : l'API peut répondre 302/HTML ou 401/JSON
+        if (res.status === 401) window.location.href = '/login';
+        throw new Error((data && data.error && data.error.message) ? data.error.message : 'Impossible de mettre à jour la wishlist.');
+      }
+
+      const action = data.data && data.data.action ? data.data.action : null; // added | removed
+      const wishlisted = action === 'added'
+        ? true
+        : action === 'removed'
+          ? false
+          : !btn.classList.contains('is-active');
+
+      btn.classList.toggle('is-active', wishlisted);
+      btn.setAttribute('aria-pressed', String(wishlisted));
+
+      const title = wishlisted ? 'Retirer de ma wishlist' : 'Ajouter à ma wishlist';
+      btn.setAttribute('title', title);
+      btn.setAttribute('aria-label', title);
+    } catch (err) {
+      alert(err && err.message ? err.message : 'Erreur.');
+    } finally {
+      btn.disabled = false;
+      btn.classList.remove('is-busy');
+    }
+  });
+})();
+
+// ──────────────────────────────────────────────
 //  HeaderProfileMenu — dropdown "Mon profil"
 // ──────────────────────────────────────────────
 

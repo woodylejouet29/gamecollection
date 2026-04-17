@@ -330,6 +330,8 @@ $q = htmlspecialchars($filters['q'] ?? '');
                 <form class="add-form" id="add-form" novalidate>
                     <input type="hidden" id="add-game-id" name="game_id" value="">
 
+                    <div class="add-form__duplicate-warn" id="add-release-gate" hidden></div>
+
                     <div class="add-form__field">
                         <label class="add-form__label" for="add-platform">Plateforme *</label>
                         <select class="add-form__select" id="add-platform" name="platform_id" required>

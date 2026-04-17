@@ -54,7 +54,7 @@ class GameService
         $games = $this->get(
             '/rest/v1/games'
             . '?slug=eq.'  . rawurlencode($slug)
-            . '&select=id,igdb_id,title,slug,synopsis,storyline,cover_url'
+            . '&select=id,igdb_id,title,slug,synopsis,synopsis_zstd,storyline,cover_url'
             . ',igdb_rating,igdb_rating_count,aggregated_rating,total_rating'
             . ',release_date,developer,publisher,genres,screenshots,videos,version_parent_igdb_id'
             . '&limit=1'
@@ -66,6 +66,7 @@ class GameService
 
         $game   = $games[0];
         $gameId = (int) $game['id'];
+        ZstdSynopsis::hydrateGameRow($game);
 
         // ── Requêtes parallèles ──────────────────────────────────────────────
         $promises = [
@@ -140,7 +141,7 @@ class GameService
 
         if ($rootIgdbId > 0) {
             $baseSibling = $this->supabaseUrl
-                . '/rest/v1/games?select=id,igdb_id,title,slug,synopsis,cover_url'
+                . '/rest/v1/games?select=id,igdb_id,title,slug,synopsis,synopsis_zstd,cover_url'
                 . '&id=neq.' . $gameId . '&';
             // IMPORTANT PERF: sur le projet v2, on stocke aussi `version_parent_igdb_id` (int) dans `games`
             // pour éviter les filtres JSONB coûteux.
@@ -288,6 +289,31 @@ class GameService
         ];
     }
 
+    /**
+     * Date de sortie (calendrier) pour contrôles d'ajout collection.
+     */
+    public function getReleaseDateById(int $gameId): ?string
+    {
+        if ($gameId <= 0) {
+            return null;
+        }
+
+        $rows = $this->get(
+            '/rest/v1/games?id=eq.' . $gameId . '&select=release_date&limit=1'
+        );
+
+        if (empty($rows[0]) || !is_array($rows[0])) {
+            return null;
+        }
+
+        $d = $rows[0]['release_date'] ?? null;
+        if ($d === null || $d === '') {
+            return null;
+        }
+
+        return is_string($d) ? substr($d, 0, 10) : null;
+    }
+
     // ────────────────────────────────────────────────────────────────────────
     //  Helpers
     // ────────────────────────────────────────────────────────────────────────
@@ -329,6 +355,7 @@ class GameService
 
         $refs = [];
         foreach ($map as $row) {
+            ZstdSynopsis::hydrateGameRow($row);
             $name = trim((string) ($row['title'] ?? ''));
             if ($name === '') {
                 continue;

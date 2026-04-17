@@ -6,8 +6,10 @@ namespace App\Controllers\Api;
 
 use App\Core\Middleware\AuthMiddleware;
 use App\Core\Logger;
-use App\Services\CollectionService;
 use App\Services\CollectionListService;
+use App\Services\CollectionReleasePolicy;
+use App\Services\CollectionService;
+use App\Services\GameService;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
@@ -68,9 +70,11 @@ class CollectionApiController
             ], 422);
         }
 
-        $service = new CollectionService();
-        $created = [];
-        $errors  = [];
+        $service     = new CollectionService();
+        $gameService = new GameService();
+        $created     = [];
+        $errors      = [];
+        $releaseCache = [];
 
         foreach ($input['games'] as $gameIdx => $game) {
             $gameId    = (int)  ($game['game_id']    ?? 0);
@@ -83,6 +87,24 @@ class CollectionApiController
 
             if ($gameId <= 0 || $platId <= 0) {
                 $errors[] = ['game_idx' => $gameIdx, 'code' => 'VALIDATION_ERROR', 'message' => 'game_id ou platform_id invalide.'];
+                continue;
+            }
+
+            if (!array_key_exists($gameId, $releaseCache)) {
+                $releaseCache[$gameId] = $gameService->getReleaseDateById($gameId);
+            }
+
+            $gate = CollectionReleasePolicy::checkAddAllowed($releaseCache[$gameId]);
+            if (!$gate['allowed']) {
+                $err = [
+                    'game_idx' => $gameIdx,
+                    'code'     => $gate['code'],
+                    'message'  => $gate['message'],
+                ];
+                if (!empty($gate['opens_at'])) {
+                    $err['opens_at'] = $gate['opens_at'];
+                }
+                $errors[] = $err;
                 continue;
             }
 

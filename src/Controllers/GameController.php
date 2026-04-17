@@ -6,6 +6,7 @@ namespace App\Controllers;
 
 use App\Core\Middleware\AuthMiddleware;
 use App\Core\View;
+use App\Services\CollectionReleasePolicy;
 use App\Services\GameService;
 
 class GameController
@@ -38,6 +39,10 @@ class GameController
         $rawIgdb = $game['raw_igdb'] ?? [];
         $appUrl  = rtrim($_ENV['APP_URL'] ?? '', '/');
 
+        $collectionGate              = CollectionReleasePolicy::checkAddAllowed($game['release_date'] ?? null);
+        $collectionAddBlocked        = !$collectionGate['allowed'];
+        $collectionAddBlockedMessage = $collectionAddBlocked ? (string) ($collectionGate['message'] ?? '') : '';
+
         $gameTitle = $game['title'] ?? 'Jeu';
         $year      = $game['release_date'] ? substr($game['release_date'], 0, 4) : '';
 
@@ -63,15 +68,20 @@ class GameController
             'ogUrl'    => $appUrl . '/game/' . $slug,
             'ogImage'  => $ogImage,
             'authUser' => $authUser,
+            'collection_add_blocked'         => $collectionAddBlocked,
+            'collection_add_blocked_message' => $collectionAddBlockedMessage,
             'head'     => '<script type="application/ld+json">' . $jsonLd . '</script>',
-            'foot'     => '<script>window.GAME_CONFIG=' . json_encode([
+            'foot'     => '<script src="' . View::asset('js/collection-release.js') . '" defer></script>'
+                        . '<script>window.GAME_CONFIG=' . json_encode([
                 'gameId'       => (int) ($game['id'] ?? 0),
                 'gameSlug'     => $game['slug'] ?? '',
                 'gameTitle'    => $game['title'] ?? '',
                 'gameCover'    => $game['cover_url'] ?? '',
+                'releaseDate'  => (string) ($game['release_date'] ?? ''),
                 'isLoggedIn'   => (bool) $authUser,
                 'isWishlisted' => (bool) $data['is_wishlisted'],
                 'collectionCount' => (int) ($data['collection_count'] ?? 0),
+                'collectionAddBlocked' => $collectionAddBlocked,
             ], JSON_UNESCAPED_SLASHES) . ';</script>'
                         . '<script src="' . View::asset('js/game.js') . '" defer></script>',
         ]));

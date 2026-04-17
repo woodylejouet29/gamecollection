@@ -112,6 +112,12 @@
   gap: .55rem;
 }
 
+/* Réduit l'espace entre cartes (vue grille + vue cartes) */
+.wl-content .game-grid--grid,
+.wl-content .game-grid--cards {
+  gap: .7rem;
+}
+
 /* ── Card — base ──────────────────────────────────────────────── */
 .wl-card {
   background: var(--bg-2);
@@ -305,7 +311,7 @@
 .game-grid--list .wl-card {
   display: flex;
   align-items: center;
-  gap: .85rem;
+  gap: .7rem;
   padding: .7rem .9rem;
   border-radius: var(--radius);
 }
@@ -454,7 +460,7 @@
 
   .wl-content .game-grid--list {
     grid-template-columns: repeat(2, 1fr);
-    gap: .65rem;
+    gap: .7rem;
   }
 
   .game-grid--list .wl-card__cover {
@@ -490,13 +496,13 @@
   }
 
   .wl-content .game-grid--list {
-    gap: .75rem;
+    gap: .7rem;
   }
 }
 
 /* ── Large desktop (≥ 1280px) ────────────────────────────────── */
 @media (min-width: 1280px) {
   .wl-content .game-grid--list {
-    gap: .9rem;
+    gap: .7rem;
   }
 }

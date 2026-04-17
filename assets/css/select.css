@@ -140,6 +140,31 @@
 .sel-game:focus-within { border-color: var(--accent); }
 
 /* Erreur de chargement */
+.sel-game__gate-banner {
+    margin: 0 0 1rem;
+    padding: 0.65rem 0.85rem;
+    border-radius: var(--radius, 8px);
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    color: var(--text);
+    font-size: 0.875rem;
+    line-height: 1.45;
+}
+
+/* Jeu présent mais non ajoutable (règle sortie) : carte atténuée, contrôles grisés */
+.sel-game[data-collection-blocked="1"] {
+    opacity: 0.72;
+    border-color: color-mix(in srgb, var(--border) 90%, transparent);
+    filter: grayscale(0.2);
+}
+
+.sel-game[data-collection-blocked="1"] .sel-type-btn:disabled,
+.sel-game[data-collection-blocked="1"] .sel-add-copy:disabled,
+.sel-game[data-collection-blocked="1"] .sel-copy__del:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
 .sel-game--error {
     border-color: rgba(239,68,68,.3);
     background: rgba(239,68,68,.06);
@@ -705,6 +730,16 @@
 [data-theme="light"] .sel-copy { background: var(--bg-2); }
 [data-theme="light"] .sel-game { background: #fff; }
 [data-theme="light"] .sel-bar  { background: rgba(255,255,255,.92); }
-[data-theme="light"] .sel-type-btn { background: var(--bg-2); }
+[data-theme="light"] .sel-type-btn:not(.is-active) { background: var(--bg-2); }
+[data-theme="light"] .sel-type-btn.is-active {
+    background: var(--grad);
+    border-color: transparent;
+    color: #fff;
+}
 [data-theme="light"] .sel-rating-pill { background: var(--bg-2); }
 [data-theme="light"] .sel-radio-btn  { background: var(--bg-2); }
+[data-theme="light"] .sel-radio-label input:checked + .sel-radio-btn {
+    background: var(--grad);
+    border-color: transparent;
+    color: #fff;
+}

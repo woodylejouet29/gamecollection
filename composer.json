@@ -18,6 +18,7 @@
         "optimize-autoloader": true
     },
     "suggest": {
-        "ext-zip": "Cache IGDB un fichier par année (storage/cache/igdb/years/YYYY.zip)"
+        "ext-zip": "Cache IGDB un fichier par année (storage/cache/igdb/years/YYYY.zip)",
+        "ext-zstd": "Compression synopsis (synopsis_zstd) + script scripts/migrate_synopsis_zstd.php"
     }
 }

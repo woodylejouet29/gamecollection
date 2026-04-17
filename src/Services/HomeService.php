@@ -46,6 +46,8 @@ class HomeService
         $data = [
             // Les clés "datées" évitent les effets de bord (année/jour) et réduisent les recalculs inutiles.
             // 1er param = label Server-Timing (stable), cache_key = suffixée si nécessaire.
+            'mostAwaitedGames' => $this->cached('most_awaited', fn() => $this->fetchMostAwaitedGames(), 3600, 86400, 'most_awaited_v1'),
+            'mostAddedGames'   => $this->cached('most_added', fn() => $this->fetchMostAddedGames(), 3600, 86400, 'most_added_v1'),
             'topRatedGames'   => $this->cached('top_rated_year', fn() => $this->fetchTopRatedThisYear(), 21600, 259200, 'top_rated_year_' . date('Y')), // 6h fresh, 72h stale
             'todayGames'      => $this->cached('today_games', fn() => $this->fetchTodayGames(), 600, 21600, 'today_games_' . date('Y-m-d')), // 10m fresh, 6h stale
             'latestReviews'   => $this->cached('latest_reviews', fn() => $this->fetchLatestReviews(), 120, 1800),
@@ -179,6 +181,93 @@ class HomeService
         }
 
         return $stats;
+    }
+
+    /**
+     * Jeux les plus ajoutés à la wishlist (toutes périodes).
+     * Implémentation côté app (PostgREST n’expose pas toujours GROUP BY) :
+     * - on récupère un échantillon large de lignes (game_id)
+     * - on compte et on hydrate via `games`.
+     *
+     * @return list<array{id:int,title:string,slug:string,cover_url:?string,igdb_rating:float|int|null,release_date:?string,count:int}>
+     */
+    private function fetchMostAwaitedGames(): array
+    {
+        return $this->fetchTopGamesByTableCounts('wishlist', 12000, 16);
+    }
+
+    /**
+     * Jeux les plus ajoutés en collection (toutes périodes).
+     *
+     * @return list<array{id:int,title:string,slug:string,cover_url:?string,igdb_rating:float|int|null,release_date:?string,count:int}>
+     */
+    private function fetchMostAddedGames(): array
+    {
+        return $this->fetchTopGamesByTableCounts('collection_entries', 20000, 16);
+    }
+
+    /**
+     * @return list<array{id:int,title:string,slug:string,cover_url:?string,igdb_rating:float|int|null,release_date:?string,count:int}>
+     */
+    private function fetchTopGamesByTableCounts(string $table, int $sampleLimit, int $topN): array
+    {
+        $sampleLimit = max(1, min(50000, $sampleLimit));
+        $topN = max(1, min(32, $topN));
+
+        $rows = $this->get(
+            // On échantillonne en prenant les ajouts les plus récents (meilleure pertinence + payload stable).
+            // `created_at` existe sur `wishlist` et `collection_entries`.
+            "/rest/v1/{$table}?select=game_id&order=created_at.desc&limit={$sampleLimit}"
+        );
+
+        if (empty($rows)) {
+            return [];
+        }
+
+        $counts = [];
+        foreach ($rows as $r) {
+            $gid = (int) ($r['game_id'] ?? 0);
+            if ($gid <= 0) continue;
+            $counts[$gid] = ($counts[$gid] ?? 0) + 1;
+        }
+        if (empty($counts)) {
+            return [];
+        }
+
+        arsort($counts);
+        $topIds = array_slice(array_keys($counts), 0, $topN);
+        $idList = implode(',', array_map('intval', $topIds));
+
+        // Hydrate via games
+        $games = $this->get(
+            "/rest/v1/games?select=id,title,slug,cover_url,igdb_rating,release_date"
+            . "&id=in.({$idList})"
+        );
+        if (empty($games)) return [];
+
+        $byId = [];
+        foreach ($games as $g) {
+            $id = (int) ($g['id'] ?? 0);
+            if ($id <= 0) continue;
+            $byId[$id] = $g;
+        }
+
+        $out = [];
+        foreach ($topIds as $id) {
+            if (!isset($byId[$id])) continue;
+            $g = $byId[$id];
+            $out[] = [
+                'id'           => (int) ($g['id'] ?? 0),
+                'title'        => (string) ($g['title'] ?? ''),
+                'slug'         => (string) ($g['slug'] ?? ''),
+                'cover_url'    => $g['cover_url'] ?? null,
+                'igdb_rating'  => $g['igdb_rating'] ?? null,
+                'release_date' => $g['release_date'] ?? null,
+                'count'        => (int) ($counts[$id] ?? 0),
+            ];
+        }
+
+        return $out;
     }
 
     // ──────────────────────────────────────────────

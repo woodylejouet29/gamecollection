@@ -29,6 +29,8 @@ $wishlistCount    = $wishlist_count    ?? 0;
 $isWishlisted     = $is_wishlisted     ?? false;
 $collectionCount  = (int) ($collection_count ?? 0);
 $authUser         = $authUser          ?? null;
+$collectionAddBlocked = (bool) ($collection_add_blocked ?? false);
+$collectionAddBlockedMessage = (string) ($collection_add_blocked_message ?? '');
 
 $rawIgdb     = $game['raw_igdb']    ?? [];
 $genres      = $game['genres']      ?? [];
@@ -274,6 +276,20 @@ function platformLabel(array $p): string
                 <?php /* Actions */ ?>
                 <div class="game-hero__actions">
                     <?php if ($authUser): ?>
+                        <?php if ($collectionAddBlocked): ?>
+                        <button type="button"
+                                class="btn btn--primary btn--collection"
+                                id="btn-add-collection"
+                                disabled
+                                aria-disabled="true"
+                                aria-label="Ajout à la collection non disponible pour l'instant"
+                                title="<?= htmlspecialchars($collectionAddBlockedMessage) ?>">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                                <circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/>
+                            </svg>
+                            Ajouter à ma collection
+                        </button>
+                        <?php else: ?>
                         <button class="btn btn--primary btn--collection"
                                 id="btn-add-collection"
                                 data-game-id="<?= (int) ($game['id'] ?? 0) ?>"
@@ -286,6 +302,7 @@ function platformLabel(array $p): string
                                 <span class="badge badge--danger" title="Déjà dans ma collection"><?= (int) $collectionCount ?></span>
                             <?php endif; ?>
                         </button>
+                        <?php endif; ?>
                         <button class="btn btn--ghost btn--wishlist <?= $isWishlisted ? 'is-active' : '' ?>"
                                 id="btn-wishlist"
                                 data-game-id="<?= (int) ($game['id'] ?? 0) ?>">
@@ -299,6 +316,9 @@ function platformLabel(array $p): string
                                 <span class="wishlist-count" id="wishlist-count"><?= $wishlistCount ?></span>
                             <?php endif; ?>
                         </button>
+                        <?php if ($collectionAddBlocked && $collectionAddBlockedMessage !== ''): ?>
+                        <p class="game-hero__collection-gate"><?= htmlspecialchars($collectionAddBlockedMessage) ?></p>
+                        <?php endif; ?>
                     <?php else: ?>
                         <a href="/login?redirect=<?= urlencode('/game/' . ($game['slug'] ?? '')) ?>"
                            class="btn btn--primary btn--collection">
@@ -1105,7 +1125,7 @@ function platformLabel(array $p): string
 </div>
 
 <?php /* ══════════════════════════════════ MODAL : AJOUTER À LA COLLECTION ══ */ ?>
-<?php if ($authUser): ?>
+<?php if ($authUser && !$collectionAddBlocked): ?>
 <div id="modal-collection"
      class="modal"
      aria-hidden="true"

@@ -58,6 +58,43 @@ class WishlistController
         }
     }
 
+    /**
+     * POST /api/wishlist/check
+     *
+     * Corps JSON : { "game_ids": [1,2,3] }
+     * Réponse : { "success": true, "data": { "game_ids": [ ... ] } }
+     */
+    public function check(): void
+    {
+        AuthMiddleware::requireAuth();
+
+        $userId = AuthMiddleware::userId();
+        if (!$userId) {
+            $this->json(['success' => false, 'error' => ['code' => 'UNAUTHORIZED', 'message' => 'Utilisateur non authentifié.']], 401);
+        }
+
+        $raw = file_get_contents('php://input');
+        $input = json_decode($raw ?: '{}', true);
+
+        $ids = $input['game_ids'] ?? [];
+        if (!is_array($ids)) {
+            $this->json(['success' => false, 'error' => ['code' => 'VALIDATION_ERROR', 'message' => 'game_ids invalide.']], 422);
+        }
+
+        // Limite raisonnable (évite payloads énormes)
+        $ids = array_slice($ids, 0, 200);
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn($x) => $x > 0)));
+
+        try {
+            $service = new WishlistService();
+            $wishlisted = $service->wishlistedGameIds($userId, $ids);
+            $this->json(['success' => true, 'data' => ['game_ids' => $wishlisted]]);
+        } catch (\Throwable $e) {
+            error_log('Wishlist check error: ' . $e->getMessage());
+            $this->json(['success' => false, 'error' => ['code' => 'SERVER_ERROR', 'message' => 'Erreur interne.']], 500);
+        }
+    }
+
     private function json(mixed $data, int $status = 200): never
     {
         http_response_code($status);

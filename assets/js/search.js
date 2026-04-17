@@ -147,6 +147,8 @@ const SelectionStore = (() => {
     const gameIdInput = document.getElementById('add-game-id');
     const form        = document.getElementById('add-form');
     const dupWarn     = document.getElementById('add-duplicate-warn');
+    const releaseGateEl = document.getElementById('add-release-gate');
+    const addSubmitBtn = document.getElementById('add-submit-btn');
     const successEl   = document.getElementById('add-success');
     const successTitle = document.getElementById('add-success-title');
 
@@ -154,11 +156,24 @@ const SelectionStore = (() => {
 
     let currentGame = null;
 
+    function setAddFormGated(blocked, message) {
+        if (releaseGateEl) {
+            releaseGateEl.hidden = !blocked;
+            releaseGateEl.textContent = blocked ? (message || '') : '';
+        }
+        if (!form) return;
+        form.querySelectorAll('input, select, textarea, button').forEach(el => {
+            if (el.dataset.action === 'close-popup') return;
+            el.disabled = !!blocked;
+        });
+    }
+
     // Délégation de clics pour ouvrir la popup
     document.addEventListener('click', e => {
         const btn = e.target.closest('[data-action="open-popup"]');
         if (btn) {
             e.preventDefault();
+            if (btn.disabled) return;
             openPopup(parseInt(btn.dataset.gameId, 10));
         }
 
@@ -252,6 +267,14 @@ const SelectionStore = (() => {
         // Cacher le spinner, montrer le contenu
         if (loading)  loading.hidden = true;
         if (content)  content.hidden = false;
+
+        setAddFormGated(false, '');
+        if (typeof window.collectionReleaseGate !== 'undefined') {
+            const gate = window.collectionReleaseGate.check(game.release_date ?? '');
+            if (!gate.ok) {
+                setAddFormGated(true, gate.message);
+            }
+        }
     }
 
     function buildMeta(game) {
@@ -266,6 +289,7 @@ const SelectionStore = (() => {
         e.preventDefault();
 
         if (!currentGame) return;
+        if (addSubmitBtn?.disabled) return;
 
         const platformId = parseInt(platformSel?.value ?? '', 10);
         if (!platformId) {
@@ -305,6 +329,8 @@ const SelectionStore = (() => {
 
     function resetModal() {
         currentGame = null;
+        setAddFormGated(false, '');
+        if (releaseGateEl) releaseGateEl.hidden = true;
         if (loading)  { loading.hidden = false; loading.innerHTML = '<div class="modal-spinner" aria-label="Chargement…"></div>'; }
         if (content)  content.hidden = true;
         if (form)     { form.hidden = false; form.reset(); }
@@ -761,6 +787,9 @@ const LazyImages = (() => {
 
             // Ré-observe les images lazy du nouveau contenu
             LazyImages.observe(area);
+
+            // Synchronise l'état wishlist des badges (flammes)
+            window.dispatchEvent(new CustomEvent('wishlist:sync', { detail: { root: area } }));
 
             // Met à jour le badge FAB mobile
             updateFabBadge(url);

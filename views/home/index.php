@@ -2,6 +2,8 @@
 use App\Core\Middleware\AuthMiddleware;
 
 $authUser         = AuthMiddleware::user();
+$mostAwaitedGames  = $mostAwaitedGames  ?? [];
+$mostAddedGames    = $mostAddedGames    ?? [];
 $topRatedGames    = $topRatedGames    ?? [];
 $todayGames       = $todayGames       ?? [];
 $latestReviews    = $latestReviews    ?? [];
@@ -200,6 +202,132 @@ function fmtDate(?string $date): string {
 <?php endif; // end invité ?>
 
 <div class="home-columns">
+    <!-- ═══════════════════════════════════════════════════════
+         LES PLUS ATTENDUS (WISHLIST)
+    ═══════════════════════════════════════════════════════ -->
+    <section class="home-section home-section--col">
+        <div class="container">
+            <div class="home-section__header">
+                <h2 class="home-section__title">Les plus listés</h2>
+                <?php if ($authUser): ?>
+                    <a href="/wishlist" class="home-section__link">Voir tout →</a>
+                <?php else: ?>
+                    <a href="/register" class="home-section__link">Créer un compte →</a>
+                <?php endif; ?>
+            </div>
+
+            <?php if (!empty($mostAwaitedGames)): ?>
+            <div class="games-scroll-wrapper">
+                <button class="games-scroll-nav games-scroll-nav--prev is-hidden" aria-label="Précédent">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+                </button>
+                <div class="games-scroll">
+                    <div class="games-scroll__track">
+                        <?php foreach ($mostAwaitedGames as $g):
+                            $src = coverSrc($g['cover_url'] ?? null);
+                            $cnt = (int) ($g['count'] ?? 0);
+                        ?>
+                        <a href="/game/<?= htmlspecialchars($g['slug'] ?? '') ?>"
+                           class="game-card-mini"
+                           title="<?= htmlspecialchars($g['title'] ?? '') ?>">
+                            <div class="game-card-mini__cover">
+                                <div class="game-card-mini__cover-placeholder" aria-hidden="true">
+                                    <?= htmlspecialchars(mb_substr($g['title'] ?? '?', 0, 30)) ?>
+                                </div>
+                                <?php if ($src): ?>
+                                    <img src="<?= htmlspecialchars($src) ?>"
+                                         alt="<?= htmlspecialchars($g['title'] ?? '') ?>"
+                                         loading="lazy"
+                                         width="130" height="170"
+                                         onerror="this.style.display='none'">
+                                <?php endif; ?>
+                                <?php if ($cnt > 0): ?>
+                                    <span class="game-card-mini__rating" style="z-index:2;position:relative"><?= number_format($cnt) ?></span>
+                                <?php endif; ?>
+                            </div>
+                            <div class="game-card-mini__info">
+                                <span class="game-card-mini__title"><?= htmlspecialchars($g['title'] ?? '') ?></span>
+                            </div>
+                        </a>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+                <button class="games-scroll-nav games-scroll-nav--next" aria-label="Suivant">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+                </button>
+            </div>
+            <?php else: ?>
+            <div class="home-empty">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 21s-7-4.35-7-10a4 4 0 0 1 7-2 4 4 0 0 1 7 2c0 5.65-7 10-7 10z"/></svg>
+                Aucune wishlist pour l'instant.
+            </div>
+            <?php endif; ?>
+        </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════
+         LES PLUS AJOUTÉS (COLLECTION)
+    ═══════════════════════════════════════════════════════ -->
+    <section class="home-section home-section--col">
+        <div class="container">
+            <div class="home-section__header">
+                <h2 class="home-section__title">Les plus ajoutés</h2>
+                <?php if ($authUser): ?>
+                    <a href="/collection" class="home-section__link">Voir tout →</a>
+                <?php else: ?>
+                    <a href="/register" class="home-section__link">Créer un compte →</a>
+                <?php endif; ?>
+            </div>
+
+            <?php if (!empty($mostAddedGames)): ?>
+            <div class="games-scroll-wrapper">
+                <button class="games-scroll-nav games-scroll-nav--prev is-hidden" aria-label="Précédent">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+                </button>
+                <div class="games-scroll">
+                    <div class="games-scroll__track">
+                        <?php foreach ($mostAddedGames as $g):
+                            $src = coverSrc($g['cover_url'] ?? null);
+                            $cnt = (int) ($g['count'] ?? 0);
+                        ?>
+                        <a href="/game/<?= htmlspecialchars($g['slug'] ?? '') ?>"
+                           class="game-card-mini"
+                           title="<?= htmlspecialchars($g['title'] ?? '') ?>">
+                            <div class="game-card-mini__cover">
+                                <div class="game-card-mini__cover-placeholder" aria-hidden="true">
+                                    <?= htmlspecialchars(mb_substr($g['title'] ?? '?', 0, 30)) ?>
+                                </div>
+                                <?php if ($src): ?>
+                                    <img src="<?= htmlspecialchars($src) ?>"
+                                         alt="<?= htmlspecialchars($g['title'] ?? '') ?>"
+                                         loading="lazy"
+                                         width="130" height="170"
+                                         onerror="this.style.display='none'">
+                                <?php endif; ?>
+                                <?php if ($cnt > 0): ?>
+                                    <span class="game-card-mini__rating" style="z-index:2;position:relative"><?= number_format($cnt) ?></span>
+                                <?php endif; ?>
+                            </div>
+                            <div class="game-card-mini__info">
+                                <span class="game-card-mini__title"><?= htmlspecialchars($g['title'] ?? '') ?></span>
+                            </div>
+                        </a>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+                <button class="games-scroll-nav games-scroll-nav--next" aria-label="Suivant">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+                </button>
+            </div>
+            <?php else: ?>
+            <div class="home-empty">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                Aucune collection pour l'instant.
+            </div>
+            <?php endif; ?>
+        </div>
+    </section>
+
     <!-- ═══════════════════════════════════════════════════════
          MIEUX NOTÉS (ANNÉE EN COURS)
     ═══════════════════════════════════════════════════════ -->

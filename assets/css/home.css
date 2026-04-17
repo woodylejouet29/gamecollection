@@ -265,7 +265,7 @@
 
 /* ── Sections génériques ──────────────────────────────────────── */
 .home-section {
-    padding: 3rem 0;
+    padding: 1.5rem 0;
     border-bottom: 1px solid var(--border);
 }
 .home-section:last-child { border-bottom: none; }
@@ -285,7 +285,7 @@
 
 .home-section--col > .container {
     max-width: 100%;
-    padding: 2rem;
+    padding: 1.5rem;
     margin: 0;
     background: var(--bg-2);
     border: 1px solid var(--border);
@@ -297,9 +297,9 @@
     .home-columns {
         display: grid;
         grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-        gap: 1.5rem;
-        padding-top: 3rem;
-        padding-bottom: 3rem;
+        gap: 1rem;
+        padding-top: 2rem;
+        padding-bottom: 2rem;
         border-bottom: 1px solid var(--border);
     }
     /* Les sections suivantes gardent leur propre séparation */
@@ -371,7 +371,7 @@
 
 .games-scroll__track {
     display: flex;
-    gap: .875rem;
+    gap: .7rem;
     padding-bottom: 4px;
 }
 
@@ -510,7 +510,7 @@
 .genre-panel__grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 1rem;
+    gap: .7rem;
 }
 
 /* Carte jeu (grille genre) */
@@ -573,7 +573,7 @@
 .platform-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-    gap: .875rem;
+    gap: .7rem;
 }
 
 .platform-card {
@@ -640,8 +640,9 @@
 /* ── Avis communauté ──────────────────────────────────────────── */
 .reviews-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
     gap: 1rem;
+    margin-bottom: 1rem;
 }
 
 .review-card {
@@ -653,6 +654,8 @@
     flex-direction: column;
     gap: .875rem;
     transition: border-color var(--transition);
+    width: 100%;
+    box-sizing: border-box;
 }
 .review-card:hover { border-color: rgba(124,58,237,.3); }
 
@@ -724,6 +727,7 @@
     gap: .5rem;
     padding-top: .75rem;
     border-top: 1px solid var(--border);
+    min-width: 0;
 }
 
 .review-card__avatar {
@@ -749,11 +753,16 @@
     font-size: .8125rem;
     font-weight: 600;
     color: var(--text-2);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 .review-card__date {
     margin-left: auto;
     font-size: .75rem;
     color: var(--text-3);
+    white-space: nowrap;
 }
 
 /* ── Empty state (widgets vides) ──────────────────────────────── */
@@ -813,4 +822,8 @@
     .reviews-grid { grid-template-columns: 1fr; }
     .games-scroll-nav { display: none; }
     .home-section { padding: 2rem 0; }
+
+    /* Sur très petits écrans, évite tout overflow dans le footer */
+    .review-card__footer { flex-wrap: wrap; }
+    .review-card__date { margin-left: 0; width: 100%; }
 }

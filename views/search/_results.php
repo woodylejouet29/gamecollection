@@ -161,6 +161,11 @@ $countMode  = (string) ($countMode ?? 'estimated');
                         }
                     }
                 }
+                $collectionGate = \App\Services\CollectionReleasePolicy::checkAddAllowed($g['release_date'] ?? null);
+                $collectionAddBlocked = !$collectionGate['allowed'];
+                $collectionAddHint = $collectionAddBlocked
+                    ? (string) ($collectionGate['message'] ?? 'Ajout à la collection non disponible pour l\'instant.')
+                    : 'Ajouter à ma sélection';
             ?>
             <article class="search-card" data-game-id="<?= (int)$g['id'] ?>">
 
@@ -174,18 +179,35 @@ $countMode  = (string) ($countMode ?? 'estimated');
                              loading="lazy"
                              onerror="this.style.display='none'">
                     <?php endif; ?>
+                    <button class="wish-badge wish-badge--overlay"
+                            type="button"
+                            data-action="wishlist-toggle"
+                            data-game-id="<?= (int)$g['id'] ?>"
+                            aria-pressed="false"
+                            aria-label="Ajouter à ma wishlist"
+                            title="Ajouter à ma wishlist">
+                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M13 3c0 3-2 4-2 6 0 1.2.8 2.2 2 2.6 0-2.2 2-3.4 2-6 2.5 2 4 4.4 4 7.4A7 7 0 1 1 5 13c0-2.3 1.1-4.3 2.6-5.8.2 1.7 1.2 3.1 2.6 4C9.4 7.6 11 6.2 13 3Z"
+                                  fill="currentColor"/>
+                        </svg>
+                    </button>
                     <?php if ($rating !== null): ?>
                         <span class="search-card__rating
                             <?= $rating >= 80 ? 'search-card__rating--high' : ($rating >= 60 ? 'search-card__rating--mid' : 'search-card__rating--low') ?>">
                             <?= $rating ?>
                         </span>
                     <?php endif; ?>
-                    <button class="search-card__add-btn"
+                    <button class="search-card__add-btn<?= $collectionAddBlocked ? ' search-card__add-btn--blocked' : '' ?>"
+                            type="button"
                             data-action="open-popup"
                             data-game-id="<?= (int)$g['id'] ?>"
                             data-game-title="<?= htmlspecialchars($g['title'] ?? '') ?>"
-                            aria-label="Ajouter <?= htmlspecialchars($g['title'] ?? '') ?> à ma sélection"
-                            title="Ajouter à ma sélection">
+                            data-release-date="<?= htmlspecialchars((string)($g['release_date'] ?? '')) ?>"
+                            aria-label="<?= $collectionAddBlocked
+                                ? 'Ajout indisponible — ' . htmlspecialchars(strip_tags($collectionAddHint))
+                                : 'Ajouter ' . htmlspecialchars($g['title'] ?? '') . ' à ma sélection' ?>"
+                            title="<?= htmlspecialchars($collectionAddHint) ?>"
+                            <?= $collectionAddBlocked ? 'disabled tabindex="-1"' : '' ?>>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
                             <path d="M12 5v14M5 12h14"/>
                         </svg>
@@ -223,6 +245,18 @@ $countMode  = (string) ($countMode ?? 'estimated');
                             <span><?= htmlspecialchars(searchFmtDateShort($g['release_date'])) ?></span>
                         </span>
                     <?php endif; ?>
+                    <button class="wish-badge wish-badge--inline"
+                            type="button"
+                            data-action="wishlist-toggle"
+                            data-game-id="<?= (int)$g['id'] ?>"
+                            aria-pressed="false"
+                            aria-label="Ajouter à ma wishlist"
+                            title="Ajouter à ma wishlist">
+                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M13 3c0 3-2 4-2 6 0 1.2.8 2.2 2 2.6 0-2.2 2-3.4 2-6 2.5 2 4 4.4 4 7.4A7 7 0 1 1 5 13c0-2.3 1.1-4.3 2.6-5.8.2 1.7 1.2 3.1 2.6 4C9.4 7.6 11 6.2 13 3Z"
+                                  fill="currentColor"/>
+                        </svg>
+                    </button>
                     <?php if (!empty($g['developer'])): ?>
                         <span class="search-card__dev" data-role="dev-line"><?= htmlspecialchars($g['developer']) ?></span>
                     <?php endif; ?>

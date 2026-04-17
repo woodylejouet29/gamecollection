@@ -3,11 +3,14 @@
     "description": "PlayShelf — site de collection de jeux vidéo",
     "type": "project",
     "require": {
-        "php": ">=8.1",
+        "php": ">=8.3",
         "nikic/fast-route": "^1.3",
         "vlucas/phpdotenv": "^5.6",
         "guzzlehttp/guzzle": "^7.8",
-        "phpoffice/phpspreadsheet": "^5.6"
+        "phpoffice/phpspreadsheet": "^2.1",
+        "ext-pdo": "*",
+        "ext-pdo_pgsql": "*",
+        "ext-zstd": "*"
     },
     "autoload": {
         "psr-4": {

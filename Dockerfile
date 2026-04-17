@@ -4,6 +4,9 @@ FROM php:8.3-apache
 RUN apt-get update && apt-get install -y \
     libpq-dev \
     libzip-dev \
+    libpng-dev \
+    libjpeg62-turbo-dev \
+    libfreetype6-dev \
     zip \
     unzip \
     git \
@@ -11,7 +14,8 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # 2. Installation des extensions PHP natives
-RUN docker-php-ext-install pdo pdo_pgsql zip
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install pdo pdo_pgsql zip gd
 
 # 3. Installation de l'extension php-zstd (via PECL)
 RUN pecl install zstd \
@@ -22,7 +26,7 @@ RUN a2enmod rewrite
 
 # 5. Configuration d'Apache pour utiliser la racine du projet comme DocumentRoot
 # Note: ton index.php est à la racine, donc on garde /var/www/html
-ENV APACHE_DOCUMENT_ROOT /var/www/html
+ENV APACHE_DOCUMENT_ROOT=/var/www/html
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
